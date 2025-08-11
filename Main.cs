@@ -1,36 +1,27 @@
-using Arch.Core;
 using Boids.Util;
-using GameLib.util;
 using Godot;
 using Godot.Sharp.Extras;
 using System;
 using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using static Godot.Projection;
 
 
-public class Particle
+public class Particle(Vector2 position, Vector2 velocity, Color color)
 {
     public int id;
     public double CollisionImmunityTime = 0.5;
-    public Vector2 Position { get; set; }
-    public Vector2 Velocity { get; set; }
-    public Color Color { get; set; }
+    public Vector2 Position { get; set; } = position;
+    public Vector2 Velocity { get; set; } = velocity;
+    public Color Color { get; set; } = color;
     public Node2D? Sprite { get; set; }
     public float Size = 32f;
-    public Particle(Vector2 position, Vector2 velocity, Color color)
-    {
-        Position = position;
-        Velocity = velocity;
-        Color = color;
-    }
+    public int DetectionMask = 0; // Mask to detect other objects. If >0, detect objects with matching layers.
+    public int CollisionLayer = 0; // Layers this object is in
 }
 
 public partial class Main : Node2D
 {
-    public static int START_COUNT = 3000;
-    public const double CollisionImmunityTimer = 0.1;
+    public static int START_COUNT = 8_000;
+    public const double CollisionImmunityTimer = 0.2;
 
     public static Main Instance { get; private set; } = null!;
 
@@ -62,7 +53,8 @@ public partial class Main : Node2D
     public void AddParticles(int count)
     {
         var texture = GD.Load<Texture2D>("res://Assets/right-arrow.png");
-        for (int i = 0; i < count; i++)
+        int baseCount = particles.Count;
+        for (int id = baseCount; id < baseCount + count; id++)
         {
             //Vector2 position = new Vector2(GD.Randf(), GD.Randf()) * Background.Size;
             Vector2 position = Vector2.Zero;
@@ -77,19 +69,26 @@ public partial class Main : Node2D
 
             position += Background.Size / 2f; // Offset to center the particles in the background
 
-            Color color = new(GD.Randf(), GD.Randf(), GD.Randf());
+            //int team = id % 2 + 1; // Two teams, alternating
+            int team = id < 500 ? 2 : 1;
+
+            Color color = team == 1 ? new Color(1, 0, 0) : new Color(0, 0, 1); // Red for team 0, blue for team 1
+            const float newSize = 32;
+            const float spriteSize = 32;
             var p = new Particle(position, velocity, color)
             {
-                id = i + particles.Count,
+                id = id,
+                Size = newSize,
+                DetectionMask = team == 1 ? 0 : 1,
+                CollisionLayer = team,
                 Sprite = new Sprite2D()
                 {
                     Texture = texture,
                     Position = position,
                     Modulate = color,
+                    Scale = Vector2.One * newSize / spriteSize
                 }
             };
-            p.Size = 5f;
-            p.Sprite.Scale = Vector2.One * p.Size / 32f;
             particles.Add(p);
             SpritesPool.AddChild(p.Sprite);
             particleDict[p.id] = p;
@@ -119,15 +118,14 @@ public partial class Main : Node2D
         foreach (var p in particles)
         {
             // Physics
-
             DetectCollisions(p);
             p.CollisionImmunityTime = Math.Max(0, p.CollisionImmunityTime - delta);
-            p.Color = new Color(p.Color, (float) (1 - p.CollisionImmunityTime));
+            p.Color = new Color(p.Color, (float)(1 - p.CollisionImmunityTime));
 
             RespectBounds(p, Background.Size);
 
             // Update position
-            p.Position += p.Velocity * (float) delta;
+            p.Position += p.Velocity * (float)delta;
             // Update sprite
             p.Sprite.Position = p.Position;
             p.Sprite.Rotation = p.Velocity.Angle();
@@ -147,7 +145,7 @@ public partial class Main : Node2D
         foreach (var child in chunk.Children)
             DrawChunks(child, depth + 1, totalDepth);
 
-        float hue = (float) depth / (float) totalDepth;
+        float hue = (float)depth / (float)totalDepth;
         float width = 5f * (1f - hue);
         Color color = Color.FromHsv(hue, 1, 1, (1f - hue));
 
@@ -170,6 +168,7 @@ public partial class Main : Node2D
 
     public void DetectCollisions(Particle p1)
     {
+        if (p1.DetectionMask == 0) return; // Skip if no detection mask
         if (p1.CollisionImmunityTime > 0) return; // Skip if immune to collisions
         var nodes = quadtree.QueryNodes(p1.Position, p1.Size * 2, []);
         foreach (var node in nodes)
@@ -178,6 +177,8 @@ public partial class Main : Node2D
             {
                 if (id == p1.id) continue;
                 var p2 = particleDict[id];
+                if (p2.CollisionLayer == 0) continue; // Skip if p2 doesnt have collisions
+                if ((p1.DetectionMask & p2.CollisionLayer) == 0) continue; // Skip masks dont match
                 if (p2.CollisionImmunityTime > 0) continue; // Skip if immune to collisions
                 CheckCollision(p1, p2);
             }
@@ -226,7 +227,7 @@ public partial class Main : Node2D
 
         if (@event is InputEventMouseButton)
         {
-            InputEventMouseButton emb = (InputEventMouseButton) @event;
+            InputEventMouseButton emb = (InputEventMouseButton)@event;
             if (emb.IsPressed())
             {
                 if (emb.ButtonIndex == MouseButton.Right)
