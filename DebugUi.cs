@@ -10,6 +10,8 @@ public partial class DebugUi : Control
     [NodePath] public Label LblCount { get; set; }
     [NodePath] public Button BtnAdd100 { get; set; }
     [NodePath] public Button BtnRem100 { get; set; }
+    private double totalFpsOverTime;
+    private int frames;
 
     public override void _Ready()
     {
@@ -23,5 +25,14 @@ public partial class DebugUi : Control
         LblFps.Text = $"FPS: {Engine.GetFramesPerSecond()}";
         LblMouse.Text = $"Mouse: {GetGlobalMousePosition().Round()}";
         LblCount.Text = $"Count: {Main.Instance.particles.Count}";
+
+        // Update FPS over time
+        if (Main.Instance.particles.Count >= 600)
+        {
+            totalFpsOverTime += Engine.GetFramesPerSecond();
+            frames++;
+        }
+        double averageFps = totalFpsOverTime / frames;
+        LblFps.Text += $"\nAvg FPS: {averageFps:F2}";
     }
 }
