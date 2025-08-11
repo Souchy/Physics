@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GameLib.util;
+namespace Physics.Utils;
 
 public class Stopwatch
 {

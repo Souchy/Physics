@@ -1,0 +1,62 @@
+{
+	// Use IntelliSense to learn about possible attributes.
+	// Hover to view descriptions of existing attributes.
+	// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "🕹 Debug Game",
+			"type": "coreclr",
+			"request": "launch",
+			"preLaunchTask": "build-without-tests",
+			"program": "${env:GODOT}",
+			"args": [],
+			"cwd": "${workspaceFolder}",
+			"stopAtEntry": false,
+			"console": "integratedTerminal"
+		},
+		{
+			"name": "🎭 Debug Current Scene",
+			"type": "coreclr",
+			"request": "launch",
+			"preLaunchTask": "build-without-tests",
+			"program": "${env:GODOT}",
+			"args": [
+				"${fileDirname}/${fileBasenameNoExtension}.tscn"
+			],
+			"cwd": "${workspaceFolder}",
+			"stopAtEntry": false,
+			"console": "integratedTerminal"
+		},
+		{
+			"name": "🧪 Debug Tests",
+			"type": "coreclr",
+			"request": "launch",
+			"preLaunchTask": "build",
+			"program": "${env:GODOT}",
+			"args": [
+				// These command line flags are used by GoDotTest to run tests.
+				"--run-tests",
+				"--quit-on-finish"
+			],
+			"cwd": "${workspaceFolder}",
+			"stopAtEntry": false,
+			"console": "integratedTerminal"
+		},
+		{
+			"name": "🔬 Debug Current Test",
+			"type": "coreclr",
+			"request": "launch",
+			"preLaunchTask": "build",
+			"program": "${env:GODOT}",
+			"args": [
+				// These command line flags are used by GoDotTest to run tests.
+				"--run-tests=${fileBasenameNoExtension}",
+				"--quit-on-finish"
+			],
+			"cwd": "${workspaceFolder}",
+			"stopAtEntry": false,
+			"console": "integratedTerminal"
+		},
+	]
+}

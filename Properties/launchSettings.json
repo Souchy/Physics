@@ -3,7 +3,7 @@
     "Debug": {
       "commandName": "Executable",
       "executablePath": "%GODOT%",
-      "commandLineArgs": "--path \"./\""
+      "commandLineArgs": "--path \"./\" --scene \"res://Main.tscn\""
     }
   }
 }

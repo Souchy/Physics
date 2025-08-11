@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace GameLib.util;
+namespace Physics.Utils;
 
 public record struct Taski(Task Task, CancellationTokenSource Cts)
 {

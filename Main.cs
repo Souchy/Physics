@@ -1,13 +1,15 @@
-using Boids.Util;
 using Godot;
 using Godot.Sharp.Extras;
 using System;
 using System.Collections.Generic;
+using Physics.Utils;
 
 
 public class Particle(Vector2 position, Vector2 velocity, Color color)
 {
     public int id;
+    public int Life { get; set; } = 10;
+    public bool Alive { get; set; } = true;
     public double CollisionImmunityTime = 0.5;
     public Vector2 Position { get; set; } = position;
     public Vector2 Velocity { get; set; } = velocity;
@@ -16,15 +18,18 @@ public class Particle(Vector2 position, Vector2 velocity, Color color)
     public float Size = 32f;
     public int DetectionMask = 0; // Mask to detect other objects. If >0, detect objects with matching layers.
     public int CollisionLayer = 0; // Layers this object is in
+
+    public const double CollisionImmunityTimer = 0.2;
+    public Action<Particle, Particle, Vector2, float, bool> OnCollision = (p, p2, deltaPos, distSquared, isInitiator) => { };
 }
 
 public partial class Main : Node2D
 {
     public static int START_COUNT = 8_000;
-    public const double CollisionImmunityTimer = 0.2;
 
     public static Main Instance { get; private set; } = null!;
 
+    private IntId ids = new();
     public Dictionary<int, Particle> particleDict = new();
     public List<Particle> particles = new(START_COUNT);
     public Quadtree<int> quadtree;
@@ -54,7 +59,7 @@ public partial class Main : Node2D
     {
         var texture = GD.Load<Texture2D>("res://Assets/right-arrow.png");
         int baseCount = particles.Count;
-        for (int id = baseCount; id < baseCount + count; id++)
+        for (int i = 0; i < count; i++) //int id = baseCount; id < baseCount + count; id++)
         {
             //Vector2 position = new Vector2(GD.Randf(), GD.Randf()) * Background.Size;
             Vector2 position = Vector2.Zero;
@@ -69,6 +74,7 @@ public partial class Main : Node2D
 
             position += Background.Size / 2f; // Offset to center the particles in the background
 
+            int id = ids.GetNextId(); // Get a unique ID for the particle
             //int team = id % 2 + 1; // Two teams, alternating
             int team = id < 500 ? 2 : 1;
 
@@ -79,7 +85,7 @@ public partial class Main : Node2D
             {
                 id = id,
                 Size = newSize,
-                DetectionMask = team == 1 ? 0 : 1,
+                DetectionMask = team == 2 ? 1 : 0,
                 CollisionLayer = team,
                 Sprite = new Sprite2D()
                 {
@@ -89,9 +95,35 @@ public partial class Main : Node2D
                     Scale = Vector2.One * newSize / spriteSize
                 }
             };
+            if (team == 2)
+            {
+                p.OnCollision = (p, p2, deltaPos, distSquared, isInitiator) =>
+                {
+                    // Bounce the velocity off the collision normal
+                    p.Velocity = p.Velocity.Bounce(deltaPos.Normalized());
+                    // immune to collisions
+                    p.CollisionImmunityTime = Particle.CollisionImmunityTimer;
+                };
+            }
+            if (team == 1)
+            {
+                p.OnCollision = (p, p2, deltaPos, distSquared, isInitiator) =>
+                {
+                    // Bounce + immune
+                    p.Velocity = p.Velocity.Bounce(-deltaPos.Normalized());
+                    p.CollisionImmunityTime = Particle.CollisionImmunityTimer;
+
+                    if (p.CollisionLayer != p2.CollisionLayer)
+                    {
+                        p.Life -= 1;
+                        if (p.Life <= 0)
+                            p.Alive = false;
+                    }
+                };
+            }
             particles.Add(p);
-            SpritesPool.AddChild(p.Sprite);
             particleDict[p.id] = p;
+            SpritesPool.AddChild(p.Sprite);
         }
     }
     public void RemoveParticles(int count)
@@ -103,33 +135,59 @@ public partial class Main : Node2D
             p.Sprite?.QueueFree();
             particles.RemoveAt(particles.Count - 1);
             particleDict.Remove(p.id);
+            ids.ReleaseId(p.id);
             //quadtree.Remove(p.id, p.Position);
         }
     }
 
     public override void _PhysicsProcess(double delta)
     {
+        // Update quadtree(s)
         quadtree.Clear();
         foreach (var p in particles)
         {
             quadtree.Insert(p.id, p.Position);
         }
 
+        // Update particle physics + nodes
         foreach (var p in particles)
         {
+            if (p.Alive == false) continue;
             // Physics
             DetectCollisions(p);
             p.CollisionImmunityTime = Math.Max(0, p.CollisionImmunityTime - delta);
-            p.Color = new Color(p.Color, (float)(1 - p.CollisionImmunityTime));
+            p.Color = new Color(p.Color, (float) (1 - p.CollisionImmunityTime));
 
             RespectBounds(p, Background.Size);
 
             // Update position
-            p.Position += p.Velocity * (float)delta;
+            p.Position += p.Velocity * (float) delta;
             // Update sprite
             p.Sprite.Position = p.Position;
             p.Sprite.Rotation = p.Velocity.Angle();
             p.Sprite.Modulate = p.Color;
+        }
+
+        // Remove dead particles
+        for (int i = particles.Count - 1; i >= 0; i--)
+        {
+            var p = particles[i];
+            if (!p.Alive)
+            {
+                // remove from data (stop iterating it)
+                particles.RemoveAt(i);
+                particleDict.Remove(p.id);
+                ids.ReleaseId(p.id);
+
+                // remove from sprites nodes after timer
+                var tween = p.Sprite?.CreateTween();
+                var prop = tween.TweenProperty(p.Sprite, "modulate", new Color(1, 1, 1, 0), 0.5f);
+                tween.SetEase(Tween.EaseType.Out);
+                prop.Finished += () =>
+                {
+                    p.Sprite?.QueueFree();
+                };
+            }
         }
     }
 
@@ -145,7 +203,7 @@ public partial class Main : Node2D
         foreach (var child in chunk.Children)
             DrawChunks(child, depth + 1, totalDepth);
 
-        float hue = (float)depth / (float)totalDepth;
+        float hue = (float) depth / (float) totalDepth;
         float width = 5f * (1f - hue);
         Color color = Color.FromHsv(hue, 1, 1, (1f - hue));
 
@@ -170,33 +228,35 @@ public partial class Main : Node2D
     {
         if (p1.DetectionMask == 0) return; // Skip if no detection mask
         if (p1.CollisionImmunityTime > 0) return; // Skip if immune to collisions
-        var nodes = quadtree.QueryNodes(p1.Position, p1.Size * 2, []);
+        var nodes = quadtree.QueryNodes(p1.Position, p1.Size, []);
         foreach (var node in nodes)
         {
             foreach (var id in node.Data)
             {
                 if (id == p1.id) continue;
                 var p2 = particleDict[id];
+                if (p2.Alive == false) continue;
+                if (p2.CollisionImmunityTime > 0) continue; // Skip if immune to collisions
                 if (p2.CollisionLayer == 0) continue; // Skip if p2 doesnt have collisions
                 if ((p1.DetectionMask & p2.CollisionLayer) == 0) continue; // Skip masks dont match
-                if (p2.CollisionImmunityTime > 0) continue; // Skip if immune to collisions
-                CheckCollision(p1, p2);
+                bool collided = CheckCollision(p1, p2);
+                if (p1.CollisionImmunityTime > 0) return; // Cancel the rest because it becomes immune to collisions
             }
         }
     }
 
-    public static void CheckCollision(Particle p1, Particle p2)
+    public static bool CheckCollision(Particle p1, Particle p2)
     {
         Vector2 deltaPos = p1.Position - p2.Position;
         float distSquared = deltaPos.LengthSquared();
-        float particleRadiusSum = p1.Size;
+        float particleRadiusSum = p1.Size; // + p2.Size;
         if (distSquared < particleRadiusSum * particleRadiusSum)
         {
-            // Bounce the velocity off the collision normal
-            p1.Velocity = p1.Velocity.Bounce(deltaPos.Normalized());
-            // immune to collisions
-            p1.CollisionImmunityTime = CollisionImmunityTimer;
+            p1.OnCollision(p1, p2, deltaPos, distSquared, true);
+            p2.OnCollision(p2, p1, deltaPos, distSquared, false);
+            return true;
         }
+        return false;
     }
 
     public static void RespectBounds(Particle p, Vector2 Bounds)
@@ -227,7 +287,7 @@ public partial class Main : Node2D
 
         if (@event is InputEventMouseButton)
         {
-            InputEventMouseButton emb = (InputEventMouseButton)@event;
+            InputEventMouseButton emb = (InputEventMouseButton) @event;
             if (emb.IsPressed())
             {
                 if (emb.ButtonIndex == MouseButton.Right)

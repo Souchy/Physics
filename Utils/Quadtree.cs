@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
-namespace Boids.Util;
+namespace Physics.Utils;
 
 public static class RectExtensions
 {
@@ -189,8 +189,8 @@ public class Quadtree<T>
                 child.QueryNodes(point, radius, nodes);
             }
         }
-        else 
-        if(Data.Count > 0)
+        else
+        if (Data.Count > 0)
         {
             nodes.Add(this);
         }
