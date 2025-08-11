@@ -1,0 +1,32 @@
+[gd_scene load_steps=3 format=3 uid="uid://cpioxx47ur0rh"]
+
+[ext_resource type="Script" uid="uid://cgafvhbs5x2oy" path="res://Main.cs" id="1_glv2v"]
+[ext_resource type="PackedScene" uid="uid://s2qcxp5drdoc" path="res://DebugUi.tscn" id="2_uu6xs"]
+
+[node name="Node2D" type="Node2D"]
+script = ExtResource("1_glv2v")
+
+[node name="World" type="Node2D" parent="."]
+
+[node name="Background" type="ColorRect" parent="World"]
+unique_name_in_owner = true
+offset_right = 1280.0
+offset_bottom = 720.0
+color = Color(0.121569, 0, 0.133333, 1)
+
+[node name="SpritesPool" type="Node2D" parent="World"]
+unique_name_in_owner = true
+
+[node name="QuadtreeLines" type="Node2D" parent="World"]
+unique_name_in_owner = true
+
+[node name="Camera2D" type="Camera2D" parent="World"]
+unique_name_in_owner = true
+position = Vector2(640, 360)
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="DebugUi" parent="CanvasLayer" instance=ExtResource("2_uu6xs")]
+top_level = true
+offset_right = 107.0
+offset_bottom = 127.0

@@ -1,0 +1,45 @@
+[gd_scene load_steps=2 format=3 uid="uid://s2qcxp5drdoc"]
+
+[ext_resource type="Script" uid="uid://bw7v34q234u1o" path="res://DebugUi.cs" id="1_35dsy"]
+
+[node name="DebugUi" type="MarginContainer"]
+offset_right = 86.0
+offset_bottom = 65.0
+size_flags_horizontal = 0
+size_flags_vertical = 0
+theme_override_constants/margin_left = 15
+theme_override_constants/margin_top = 15
+script = ExtResource("1_35dsy")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+
+[node name="LblFps" type="Label" parent="VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "FPS: 0"
+
+[node name="LblMouse" type="Label" parent="VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Mouse: []"
+
+[node name="LblCount" type="Label" parent="VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Count: 1000"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="BtnAdd100" type="Button" parent="VBoxContainer/HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "+100"
+
+[node name="BtnRem100" type="Button" parent="VBoxContainer/HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "-100"

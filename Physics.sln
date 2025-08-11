@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36221.1 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Physics", "Physics.csproj", "{C114BC6A-28E8-47BA-A194-63C5B013B477}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		ExportDebug|Any CPU = ExportDebug|Any CPU
+		ExportRelease|Any CPU = ExportRelease|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C114BC6A-28E8-47BA-A194-63C5B013B477}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C114BC6A-28E8-47BA-A194-63C5B013B477}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C114BC6A-28E8-47BA-A194-63C5B013B477}.ExportDebug|Any CPU.ActiveCfg = ExportDebug|Any CPU
+		{C114BC6A-28E8-47BA-A194-63C5B013B477}.ExportDebug|Any CPU.Build.0 = ExportDebug|Any CPU
+		{C114BC6A-28E8-47BA-A194-63C5B013B477}.ExportRelease|Any CPU.ActiveCfg = ExportRelease|Any CPU
+		{C114BC6A-28E8-47BA-A194-63C5B013B477}.ExportRelease|Any CPU.Build.0 = ExportRelease|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

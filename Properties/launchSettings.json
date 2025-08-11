@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "Debug": {
+      "commandName": "Executable",
+      "executablePath": "%GODOT%",
+      "commandLineArgs": "--path \"./\""
+    }
+  }
+}
