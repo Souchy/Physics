@@ -12,6 +12,7 @@ public partial class DebugUi : Control
     [NodePath] public Button BtnRem100 { get; set; }
     private double totalFpsOverTime;
     private int frames;
+    private int actualFrames;
 
     public override void _Ready()
     {
@@ -27,12 +28,13 @@ public partial class DebugUi : Control
         LblCount.Text = $"Count: {Main.Instance.particles.Count}";
 
         // Update FPS over time
-        if (Main.Instance.particles.Count >= 3000)
+        frames++;
+        if (frames > 1 * 60 && frames < 30 * 60) //Main.Instance.particles.Count >= 3000)
         {
             totalFpsOverTime += Engine.GetFramesPerSecond();
-            frames++;
+            actualFrames++;
         }
-        double averageFps = totalFpsOverTime / frames;
+        double averageFps = totalFpsOverTime / actualFrames;
         LblFps.Text += $"\nAvg FPS: {averageFps:F2}";
     }
 }

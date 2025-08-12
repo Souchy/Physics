@@ -39,6 +39,9 @@ public partial class Main : Node2D
     [NodePath] public Node2D SpritesPool { get; set; } = null!;
     [NodePath] public Node2D QuadtreeLines { get; set; } = null!;
 
+    private Quadtree<int> quadtreeSwap;
+    private Quadtree<int> quadtreeThread;
+
     public override void _Ready()
     {
         this.OnReady();
@@ -53,6 +56,19 @@ public partial class Main : Node2D
         quadtree = new Quadtree<int>(0, bounds);
 
         AddParticles(START_COUNT);
+
+        Scheduler.RunTimed(16, (delta) =>
+        {
+            quadtreeSwap = quadtreeThread;
+            quadtreeThread = new(0, bounds);
+            // Update quadtree(s)
+            //quadtreeThread.Clear();
+            foreach (var p in particles)
+            {
+                if (p.CollisionLayer != 0)
+                    quadtreeThread.Insert(p.id, p.Position); // 160-190 avg fps
+            }
+        });
     }
 
     public void AddParticles(int count)
@@ -85,8 +101,8 @@ public partial class Main : Node2D
             {
                 id = id,
                 Size = newSize,
-                DetectionMask = team == 2 ? 1 : 0,
-                CollisionLayer = team,
+                DetectionMask = team == 2 ? 1 : 0, // only team 2 detects team 1
+                CollisionLayer = team == 2 ? 0 : team, // team team 1 can be detected
                 Sprite = new Sprite2D()
                 {
                     Texture = texture,
@@ -113,12 +129,12 @@ public partial class Main : Node2D
                     p.Velocity = p.Velocity.Bounce(-deltaPos.Normalized());
                     p.CollisionImmunityTime = Particle.CollisionImmunityTimer;
 
-                    if (p.CollisionLayer != p2.CollisionLayer)
-                    {
-                        p.Life -= 1;
-                        if (p.Life <= 0)
-                            p.Alive = false;
-                    }
+                    //if (p.CollisionLayer != p2.CollisionLayer)
+                    //{
+                    //    p.Life -= 1;
+                    //    if (p.Life <= 0)
+                    //        p.Alive = false;
+                    //}
                 };
             }
             particles.Add(p);
@@ -142,13 +158,21 @@ public partial class Main : Node2D
 
     public override void _PhysicsProcess(double delta)
     {
-        // Update quadtree(s)
-        quadtree.Clear();
-        foreach (var p in particles)
+        if(quadtreeSwap != null)
         {
-            quadtree.Insert(p.id, p.Position); // 160-190 avg fps
-            //quadtree.Insert(p.id, p.Position, p.Size / 2f); // 30 avg fps
+            // Swap quadtree references
+            quadtree = quadtreeSwap;
+            quadtreeSwap = null;
         }
+
+        // Update quadtree(s)
+        //quadtree.Clear();
+        //foreach (var p in particles)
+        //{
+        //    quadtree.Insert(p.id, p.Position); // 160-190 avg fps
+        //    //quadtree.Insert(p.id, p.Position, p.Size / 2f); // 30 avg fps
+
+        //}
 
         // Update particle physics + nodes
         foreach (var p in particles)
@@ -160,13 +184,6 @@ public partial class Main : Node2D
             p.Color = new Color(p.Color, (float) (1 - p.CollisionImmunityTime));
 
             RespectBounds(p, Background.Size);
-
-            // Update position
-            p.Position += p.Velocity * (float) delta;
-            // Update sprite
-            p.Sprite.Position = p.Position;
-            p.Sprite.Rotation = p.Velocity.Angle();
-            p.Sprite.Modulate = p.Color;
         }
 
         // Remove dead particles
@@ -188,6 +205,15 @@ public partial class Main : Node2D
                 {
                     p.Sprite?.QueueFree();
                 };
+            }
+            else
+            {
+                // Update position
+                p.Position += p.Velocity * (float) delta;
+                // Update sprite
+                p.Sprite.Position = p.Position;
+                p.Sprite.Rotation = p.Velocity.Angle();
+                p.Sprite.Modulate = p.Color;
             }
         }
     }
