@@ -7,7 +7,7 @@ using System;
 using System.Collections.Generic;
 using Xunit;
 
-namespace Physics.Tests;
+namespace Benchmarks.Quadtree;
 
 public class QuadtreeBenchmarksXunit
 {
@@ -15,7 +15,7 @@ public class QuadtreeBenchmarksXunit
     public void RunQuadtreeBenchmark()
     {
         // This will run the benchmarks and output results to the console and BenchmarkDotNet's output folder.
-        var summary = BenchmarkRunner.Run<QuadtreeBenchmarks>();
+        var summary = BenchmarkRunner.Run<QuadtreeBenchmark>();
 
         // Optionally, add a simple assertion to prevent xUnit from optimizing away the call.
         Assert.NotNull(summary);
@@ -23,13 +23,15 @@ public class QuadtreeBenchmarksXunit
 }
 
 [MemoryDiagnoser]
-public class QuadtreeBenchmarks
+public class QuadtreeBenchmark
 {
-    private Quadtree<int> quadtree;
-    private List<Vector2> positions;
-    private const int ItemCount = 10_000;
-    private Rect2 bounds = new Rect2(0, 0, 1280, 720);
-    private Random rng = new Random();
+    [Params(10_000, 25_000, 50_000)]
+    public int ItemCount { get; set; }
+
+    private Quadtree<int> quadtree = null!;
+    private List<Vector2> positions = null!;
+    private Rect2 bounds = new(0, 0, 1280, 720);
+    private readonly Random rng = new();
 
     [GlobalSetup]
     public void Setup()
@@ -45,8 +47,25 @@ public class QuadtreeBenchmarks
         }
     }
 
+    #region Insert
+    [IterationSetup(Target = nameof(InsertAll))]
+    public void IterationSetupInsert()
+    {
+        quadtree.Clear();
+    }
     [Benchmark]
     public void InsertAll()
+    {
+        for (int i = 0; i < ItemCount; i++)
+        {
+            quadtree.Insert(i, positions[i]);
+        }
+    }
+    #endregion
+
+    #region Query
+    [IterationSetup(Target = nameof(QueryAll))]
+    public void IterationSetupQuery()
     {
         quadtree.Clear();
         for (int i = 0; i < ItemCount; i++)
@@ -58,17 +77,16 @@ public class QuadtreeBenchmarks
     [Benchmark]
     public void QueryAll()
     {
-        // Ensure the quadtree is populated
-        if (quadtree.Data.Count == 0)
-        {
-            InsertAll();
-        }
         int total = 0;
-        for (int i = 0; i < 1000; i++)
+        for (int i = 0; i < ItemCount; i++)
         {
-            var nodes = quadtree.QueryNodes(positions[i], 32f, new List<Quadtree<int>>());
+            var entityId = rng.Next(positions.Count);
+            var pos = positions[entityId];
+            var nodes = quadtree.QueryNodes(pos, 32f, []);
             total += nodes.Count;
         }
     }
+    #endregion
+
 }
 

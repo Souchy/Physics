@@ -1,5 +1,5 @@
 using BenchmarkDotNet.Running;
-using Physics.Tests;
+using Benchmarks.Quadtree;
 
 namespace Benchmarks;
 
@@ -7,6 +7,6 @@ internal class Program
 {
     static void Main(string[] args)
     {
-        var summary = BenchmarkRunner.Run<QuadtreeBenchmarks>();
+        var summary = BenchmarkRunner.Run<QuadtreeBenchmark>();
     }
 }

@@ -3,3 +3,6 @@
 /android/
 .vs/
 README.pdf
+obj/
+bin/
+BenchmarkDotNet.Artifacts/
