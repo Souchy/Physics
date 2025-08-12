@@ -4,7 +4,7 @@ using Physics.Utils;
 using System;
 using System.Collections.Generic;
 
-namespace Physics.Mains.v1;
+namespace Physics.Mains.v2;
 
 public class Particle(Vector2 position, Vector2 velocity, Color color)
 {
@@ -24,41 +24,50 @@ public class Particle(Vector2 position, Vector2 velocity, Color color)
     public Action<Particle, Particle, Vector2, float, bool> OnCollision = (p, p2, deltaPos, distSquared, isInitiator) => { };
 }
 
-public class Main1(Node mainNode, Vector2 backgroundSize) : IGameLoop
+public class MainThreadInsert(Node mainNode, Vector2 backgroundSize) : IGameLoop
 {
-
     #region Nodes
-    public Node2D SpritesPool { get; set; } = null!;
+    private Node2D SpritesPool { get; set; } = null!;
     #endregion
 
-    public const float newSize = 32;
-    public const float spriteSize = 32;
-
-    public IntId ids = new();
+    private IntId ids = new();
     public Dictionary<int, Particle> particleDict = [];
     public List<Particle> particles;
     public Quadtree<int> quadtree;
 
     public int ParticleCount => particles.Count;
 
-    public Texture2D texture;
+    private Quadtree<int> quadtreeSwap;
+    private Quadtree<int> quadtreeThread;
 
-    public virtual void OnReady()
+    public void OnReady()
     {
         var size = backgroundSize;
         var bounds = new Rect2(Vector2.Zero, size);
         quadtree = new Quadtree<int>(0, bounds);
         particles = new(10_000);
         SpritesPool = mainNode.GetNode<Node2D>("%SpritesPool");
-        texture = GD.Load<Texture2D>("res://Assets/right-arrow.png");
     }
 
-    public virtual void Start()
+    public void Start()
     {
+        Scheduler.RunTimed(16, (delta) =>
+        {
+            var bounds = new Rect2(Vector2.Zero, backgroundSize);
+            quadtreeSwap = quadtreeThread;
+            quadtreeThread = new(0, bounds);
+            // Update quadtree(s)
+            foreach (var p in particles)
+            {
+                if (p?.CollisionLayer != 0)
+                    quadtreeThread.Insert(p.id, p.Position);
+            }
+        });
     }
 
-    public virtual void AddParticles(int count, int team, int detectionMask, int collisionLayer, Color color)
+    public void AddParticles(int count, int team, int detectionMask, int collisionLayer, Color color)
     {
+        var texture = GD.Load<Texture2D>("res://Assets/right-arrow.png");
         int baseCount = particles.Count;
         for (int i = 0; i < count; i++) //int id = baseCount; id < baseCount + count; id++)
         {
@@ -75,12 +84,21 @@ public class Main1(Node mainNode, Vector2 backgroundSize) : IGameLoop
 
             int id = ids.GetNextId(); // Get a unique ID for the particle
 
+            const float newSize = 32;
+            const float spriteSize = 32;
             var p = new Particle(position, velocity, color)
             {
                 id = id,
                 Size = newSize,
                 DetectionMask = detectionMask,
                 CollisionLayer = collisionLayer,
+                Sprite = new Sprite2D()
+                {
+                    Texture = texture,
+                    Position = position,
+                    Modulate = color,
+                    Scale = Vector2.One * newSize / spriteSize
+                }
             };
             if (team == 2)
             {
@@ -100,34 +118,20 @@ public class Main1(Node mainNode, Vector2 backgroundSize) : IGameLoop
                     p.Velocity = p.Velocity.Bounce(-deltaPos.Normalized());
                     p.CollisionImmunityTime = Particle.CollisionImmunityTimer;
 
-                    if (p.CollisionLayer != p2.CollisionLayer)
-                    {
-                        p.Life -= 1;
-                        if (p.Life <= 0)
-                            p.Alive = false;
-                    }
+                    //if (p.CollisionLayer != p2.CollisionLayer)
+                    //{
+                    //    p.Life -= 1;
+                    //    if (p.Life <= 0)
+                    //        p.Alive = false;
+                    //}
                 };
             }
             particles.Add(p);
             particleDict[p.id] = p;
-            AddParticleSprite(p);
+            SpritesPool.AddChild(p.Sprite);
         }
     }
-
-    public virtual void AddParticleSprite(Particle p)
-    {
-        var sprite = new Sprite2D()
-        {
-            Texture = texture,
-            Position = p.Position,
-            Modulate = p.Color,
-            Scale = Vector2.One * p.Size / spriteSize
-        };
-        p.Sprite = sprite;
-        SpritesPool.AddChild(sprite);
-    }
-
-    public virtual void RemoveParticles(int count)
+    public void RemoveParticles(int count)
     {
         count = Math.Min(count, particles.Count);
         for (int i = 0; i < count; i++)
@@ -141,27 +145,15 @@ public class Main1(Node mainNode, Vector2 backgroundSize) : IGameLoop
         }
     }
 
-    public virtual void PhysicsProcess(double delta)
+    public void PhysicsProcess(double delta)
     {
-        UpdateQuadtree(delta);
-        UpdatePhysics(delta);
-        UpdateNodes(delta);
-    }
-
-    public virtual void UpdateQuadtree(double delta)
-    {
-        // Update quadtree(s)
-        quadtree.Clear();
-        foreach (var p in particles)
+        if (quadtreeSwap != null)
         {
-            if (p.CollisionLayer != 0)
-                quadtree.Insert(p.id, p.Position); // 160-190 avg fps
-            //quadtree.Insert(p.id, p.Position, p.Size / 2f); // 30 avg fps
+            // Swap quadtree references
+            quadtree = quadtreeSwap;
+            quadtreeSwap = null;
         }
-    }
 
-    public virtual void UpdatePhysics(double delta)
-    {
         // Update particle physics + nodes
         foreach (var p in particles)
         {
@@ -173,60 +165,40 @@ public class Main1(Node mainNode, Vector2 backgroundSize) : IGameLoop
 
             RespectBounds(p, backgroundSize);
         }
-    }
 
-    public virtual void UpdateNodes(double delta)
-    {
+        // Remove dead particles
         for (int i = particles.Count - 1; i >= 0; i--)
         {
             var p = particles[i];
-            // Remove dead particles
             if (!p.Alive)
             {
                 // remove from data (stop iterating it)
-                RemoveParticle(i, p);
+                particles.RemoveAt(i);
+                particleDict.Remove(p.id);
+                ids.ReleaseId(p.id);
+
                 // remove from sprites nodes after timer
-                OnDeath(i, p);
+                var tween = p.Sprite?.CreateTween();
+                var prop = tween.TweenProperty(p.Sprite, "modulate", new Color(1, 1, 1, 0), 0.5f);
+                tween.SetEase(Tween.EaseType.Out);
+                prop.Finished += () =>
+                {
+                    p.Sprite?.QueueFree();
+                };
             }
-            // Update alive particles
             else
             {
-                UpdateParticleNode(i, p, delta);
+                // Update position
+                p.Position += p.Velocity * (float) delta;
+                // Update sprite
+                p.Sprite.Position = p.Position;
+                p.Sprite.Rotation = p.Velocity.Angle();
+                p.Sprite.Modulate = p.Color;
             }
         }
     }
 
-    public virtual void RemoveParticle(int i, Particle p)
-    {
-        // remove from data (stop iterating it)
-        particles.RemoveAt(i);
-        particleDict.Remove(p.id);
-        ids.ReleaseId(p.id);
-    }
-
-    public virtual void OnDeath(int i, Particle p)
-    {
-        // remove from sprites nodes after timer
-        var tween = p.Sprite?.CreateTween();
-        var prop = tween.TweenProperty(p.Sprite, "modulate", new Color(1, 1, 1, 0), 0.5f);
-        tween.SetEase(Tween.EaseType.Out);
-        prop.Finished += () =>
-        {
-            p.Sprite?.QueueFree();
-        };
-    }
-
-    public virtual void UpdateParticleNode(int i, Particle p, double delta)
-    {
-        // Update position
-        p.Position += p.Velocity * (float) delta;
-        // Update sprite
-        p.Sprite.Position = p.Position;
-        p.Sprite.Rotation = p.Velocity.Angle();
-        p.Sprite.Modulate = p.Color;
-    }
-
-    public virtual void DetectCollisions(Particle p1)
+    public void DetectCollisions(Particle p1)
     {
         if (p1.DetectionMask == 0) return; // Skip if no detection mask
         if (p1.CollisionImmunityTime > 0) return; // Skip if immune to collisions
@@ -248,7 +220,7 @@ public class Main1(Node mainNode, Vector2 backgroundSize) : IGameLoop
         }
     }
 
-    public virtual bool CheckCollision(Particle p1, Particle p2)
+    public static bool CheckCollision(Particle p1, Particle p2)
     {
         Vector2 deltaPos = p1.Position - p2.Position;
         float distSquared = deltaPos.LengthSquared();
@@ -262,7 +234,7 @@ public class Main1(Node mainNode, Vector2 backgroundSize) : IGameLoop
         return false;
     }
 
-    public virtual void RespectBounds(Particle p, Vector2 Bounds)
+    public static void RespectBounds(Particle p, Vector2 Bounds)
     {
         float vx = p.Velocity.X;
         float vy = p.Velocity.Y;

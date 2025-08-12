@@ -18,15 +18,15 @@ public partial class DebugUi : Control
     public override void _Ready()
     {
         this.OnReady();
-        BtnAdd100.Pressed += () => Main.Instance.AddParticles(100);
-        BtnRem100.Pressed += () => Main.Instance.RemoveParticles(100);
+        BtnAdd100.Pressed += () => Main.Instance.gameLoop.AddParticles(100);
+        BtnRem100.Pressed += () => Main.Instance.gameLoop.RemoveParticles(100);
     }
 
     public override void _Process(double delta)
     {
         LblFps.Text = $"FPS: {Engine.GetFramesPerSecond()}";
         LblMouse.Text = $"Mouse: {GetGlobalMousePosition().Round()}";
-        LblCount.Text = $"Count: {Main.Instance.particles.Count}";
+        LblCount.Text = $"Count: {Main.Instance.gameLoop.ParticleCount}";
 
         // Update FPS over time
         frames++;
