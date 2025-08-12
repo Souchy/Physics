@@ -5,6 +5,8 @@ VisualStudioVersion = 17.14.36221.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Physics", "Physics\Physics.csproj", "{C114BC6A-28E8-47BA-A194-63C5B013B477}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Benchmarks", "Benchmarks\Benchmarks.csproj", "{2311A35A-630F-8D56-15CD-BBB525570F8F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,6 +20,12 @@ Global
 		{C114BC6A-28E8-47BA-A194-63C5B013B477}.ExportDebug|Any CPU.Build.0 = ExportDebug|Any CPU
 		{C114BC6A-28E8-47BA-A194-63C5B013B477}.ExportRelease|Any CPU.ActiveCfg = ExportRelease|Any CPU
 		{C114BC6A-28E8-47BA-A194-63C5B013B477}.ExportRelease|Any CPU.Build.0 = ExportRelease|Any CPU
+		{2311A35A-630F-8D56-15CD-BBB525570F8F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2311A35A-630F-8D56-15CD-BBB525570F8F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2311A35A-630F-8D56-15CD-BBB525570F8F}.ExportDebug|Any CPU.ActiveCfg = Release|Any CPU
+		{2311A35A-630F-8D56-15CD-BBB525570F8F}.ExportDebug|Any CPU.Build.0 = Release|Any CPU
+		{2311A35A-630F-8D56-15CD-BBB525570F8F}.ExportRelease|Any CPU.ActiveCfg = Release|Any CPU
+		{2311A35A-630F-8D56-15CD-BBB525570F8F}.ExportRelease|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
