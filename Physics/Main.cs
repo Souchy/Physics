@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using Physics.Utils;
 
+namespace Physics;
 
 public class Particle(Vector2 position, Vector2 velocity, Color color)
 {

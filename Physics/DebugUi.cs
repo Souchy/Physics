@@ -1,6 +1,7 @@
 using Godot;
 using Godot.Sharp.Extras;
-using System;
+
+namespace Physics;
 
 public partial class DebugUi : Control
 {
