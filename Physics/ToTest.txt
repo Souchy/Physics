@@ -1,0 +1,43 @@
+
+# Functionality
+	Physics:
+		- Collision detection
+		- Multiple sizes
+		- Multiple shapes (simple: rect, circle)
+		- Bonus: Materials (bouncy, sticky, icy, mass)
+	Entities:
+		- Add/Remove entities
+		- Entity animation
+		- Entity resource pooling
+		- Entity navigation (navigate to target, avoid entities, avoid walls, avoid holes...)
+
+# TO TEST
+	Render:
+		- Godot Sprite2D nodes (one pool per texture)
+		- Godot MultiMesh node (one multimesh per texture)
+		- Godot rendering server
+
+	Physics:
+		- Godot physics nodes: Area, CollisionShape
+		- Godot physics server: Area + multiple CollisionShape
+		- Custom physics
+
+			Spatial partitioning data structure:
+				Data structure:
+					- Quadtree
+					- Grid
+					- Hash
+				Partitioning logic: (reduce number of queries and entities per query)
+					- Quadtree instance per collision layer
+					- Player -> enemies + enemy projectiles
+					- Player AoE -> enemies
+					- Enemies -> player projectiles
+					- Walls -> player + player projectiles + enemies + enemy projectiles
+
+	Loop:
+		- ECS
+		- Custom (CPU)
+		- Custom (GPU)
+
+	Multithreading:
+		- +1 thread Quadtree population insert
