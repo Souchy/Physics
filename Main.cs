@@ -146,8 +146,8 @@ public partial class Main : Node2D
         quadtree.Clear();
         foreach (var p in particles)
         {
-            //quadtree.Insert(p.id, p.Position); // 160-190 avg fps
-            quadtree.Insert(p.id, p.Position, p.Size / 2f); // 30 avg fps
+            quadtree.Insert(p.id, p.Position); // 160-190 avg fps
+            //quadtree.Insert(p.id, p.Position, p.Size / 2f); // 30 avg fps
         }
 
         // Update particle physics + nodes
