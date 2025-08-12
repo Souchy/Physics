@@ -2,6 +2,7 @@ using Godot;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using static System.Runtime.InteropServices.JavaScript.JSType;
@@ -111,7 +112,7 @@ public class Quadtree<T>
         }
 
         // Insert
-        Data ??= [];
+        //Data ??= [];
         Data.Add(item);
 
         // Check if we need to split
@@ -147,7 +148,7 @@ public class Quadtree<T>
         }
 
         // Insert
-        Data ??= [];
+        //Data ??= [];
         Data.Add(item);
 
         // Check if we need to split
@@ -244,15 +245,12 @@ public class Quadtree<T>
             return this;
     }
 
-
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int GetIndexForPoint(Vector2 pos)
     {
-        var delta = pos - Center;
         int index = 0;
-        if (delta.X >= 0) index += 1; // Right
-        if (delta.Y >= 0) index += 2; // Down
-        //int index = (pos.X < Bounds.Position.X + Bounds.Size.X / 2 ? 0 : 1) + // check if x < middleX
-        //            (pos.Y < Bounds.Position.Y + Bounds.Size.Y / 2 ? 0 : 2); // check if y < middleY
+        if (pos.X >= Center.X) index += 1; // Right
+        if (pos.Y >= Center.Y) index += 2; // Down
         return index;
     }
 
