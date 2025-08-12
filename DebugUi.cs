@@ -27,7 +27,7 @@ public partial class DebugUi : Control
         LblCount.Text = $"Count: {Main.Instance.particles.Count}";
 
         // Update FPS over time
-        if (Main.Instance.particles.Count >= 600)
+        if (Main.Instance.particles.Count >= 3000)
         {
             totalFpsOverTime += Engine.GetFramesPerSecond();
             frames++;

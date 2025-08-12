@@ -128,6 +128,42 @@ public class Quadtree<T>
     }
 
     /// <summary>
+    /// Inserts into every leaf that intersects with the item.
+    /// </summary>
+    public void Insert(T item, Vector2 pos, float radius)
+    {
+        if (HasChildren)
+        {
+            //int index = GetIndexForPoint(pos);
+            //Children[index].Insert(item, pos, radius);
+            for(int i = 0; i < Children.Length; i++)
+            {
+                if (Children[i].Intersects(pos, radius))
+                {
+                    Children[i].Insert(item, pos, radius);
+                }
+            }
+            return;
+        }
+
+        // Insert
+        Data ??= [];
+        Data.Add(item);
+
+        // Check if we need to split
+        if (Data.Count > DATA_CAPACITY && Depth < MAX_DEPTH)
+        {
+            Split();
+            foreach (var dataItem in Data)
+            {
+                Insert(dataItem, pos);
+            }
+            Data.Clear();
+            Data.Capacity = DATA_CAPACITY;
+        }
+    }
+
+    /// <summary>
     /// Remove an item from the quadtree. If a child node was updated, check if we can merge children back into this node.
     /// </summary>
     /// <param name="item">Item to remove from data</param>
@@ -196,6 +232,18 @@ public class Quadtree<T>
         }
         return nodes;
     }
+
+    public Quadtree<T> GetNode(Vector2 point)
+    {
+        if (HasChildren)
+        {
+            int index = GetIndexForPoint(point);
+            return Children[index].GetNode(point);
+        }
+        else
+            return this;
+    }
+
 
     public int GetIndexForPoint(Vector2 pos)
     {

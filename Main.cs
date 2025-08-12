@@ -25,7 +25,7 @@ public class Particle(Vector2 position, Vector2 velocity, Color color)
 
 public partial class Main : Node2D
 {
-    public static int START_COUNT = 8_000;
+    public static int START_COUNT = 4_000;
 
     public static Main Instance { get; private set; } = null!;
 
@@ -146,7 +146,8 @@ public partial class Main : Node2D
         quadtree.Clear();
         foreach (var p in particles)
         {
-            quadtree.Insert(p.id, p.Position);
+            //quadtree.Insert(p.id, p.Position); // 160-190 avg fps
+            quadtree.Insert(p.id, p.Position, p.Size / 2f); // 30 avg fps
         }
 
         // Update particle physics + nodes
@@ -228,7 +229,8 @@ public partial class Main : Node2D
     {
         if (p1.DetectionMask == 0) return; // Skip if no detection mask
         if (p1.CollisionImmunityTime > 0) return; // Skip if immune to collisions
-        var nodes = quadtree.QueryNodes(p1.Position, p1.Size, []);
+        //var node = quadtree.GetNode(p1.Position); // 30 avg fps with inserting in all overlapping nodes
+        var nodes = quadtree.QueryNodes(p1.Position, p1.Size / 2f, []);
         foreach (var node in nodes)
         {
             foreach (var id in node.Data)
