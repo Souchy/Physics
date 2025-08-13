@@ -2,12 +2,9 @@ using Arch.Core;
 using Arch.Core.Extensions;
 using System.Numerics;
 
-namespace Test;
+namespace Test.Arch;
 
-public record struct Position(Vector2 Value);
-public record struct Velocity(Vector2 Value);
-
-public class ArchTest
+public class ArchComponentTest
 {
     [Fact]
     public void TestRef()
@@ -25,7 +22,7 @@ public class ArchTest
         {
             pos.Value += vel.Value;
         });
-        world.Query(in movementQuery, (Entity entity) =>
+        world.Query(in movementQuery, (entity) =>
         {
             entity.Get<Position>().Value += entity.Get<Velocity>().Value;
         });

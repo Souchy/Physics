@@ -1,55 +1,32 @@
 using Godot;
 using Physics.Mains.v1;
 using Physics.Mains.v2;
+using Physics.Mains.v3_Multimesh;
 using System;
 
 namespace Physics.Mains.v3;
 
 public class MainMultimesh(Node mainNode, Vector2 backgroundSize) : MainThreadInsert(mainNode, backgroundSize)
 {
-    public MultiMeshInstance2D MultiMeshInstance;
-    private MultiMesh Multimesh;
+    public MultimeshSpawner spawner;
 
     public override void OnReady()
     {
         base.OnReady();
-        MultiMeshInstance = new MultiMeshInstance2D()
-        {
-            Texture = texture,
-            Multimesh = new MultiMesh()
-            {
-                TransformFormat = MultiMesh.TransformFormatEnum.Transform2D,
-                InstanceCount = 0,
-                UseColors = true,
-                Mesh = new QuadMesh()
-                {
-                    Size = new Vector2(newSize, newSize),
-                },
-            },
-        };
-        Multimesh = MultiMeshInstance.Multimesh;
-        SpritesPool.AddChild(MultiMeshInstance);
+        spawner = new(texture, new Vector2(newSize, newSize), MultimeshSpawnerFlags.Color);
+        SpritesPool.AddChild(spawner.MultiMeshInstance);
     }
 
     public override void AddParticles(int count, int team, int detectionMask, int collisionLayer, Color color)
     {
         // Manage visible instances
-        {
-            int toVisible = Multimesh.InstanceCount - Multimesh.VisibleInstanceCount;
-            toVisible = Math.Min(toVisible, count);
-            Multimesh.VisibleInstanceCount += toVisible;
-            count -= toVisible;
-
-            Multimesh.InstanceCount += count;
-            Multimesh.VisibleInstanceCount += count;
-        }
-
+        spawner.AddInstances(count);
         base.AddParticles(count, team, detectionMask, collisionLayer, color);
     }
 
     public override void RemoveParticles(int count)
     {
-        Multimesh.VisibleInstanceCount = Math.Max(0, Multimesh.VisibleInstanceCount - count);
+        spawner.RemoveInstances(count);
         base.RemoveParticles(count);
     }
 
@@ -58,19 +35,18 @@ public class MainMultimesh(Node mainNode, Vector2 backgroundSize) : MainThreadIn
         // Update position
         p.Position += p.Velocity * (float) delta;
         //// Update sprite
-        Multimesh.SetInstanceTransform2D(i, new Transform2D(p.Velocity.Angle(), p.Position));
-        Multimesh.SetInstanceColor(i, p.Color);
+        spawner.UpdateInstance(i, p.Position, p.Velocity, p.Color);
+    }
+
+    public override void RemoveParticle(int i, Particle p)
+    {
+        spawner.RemoveInstance();
+        base.RemoveParticle(i, p);
     }
 
     public override void AddParticleSprite(Particle p)
     {
         // dont.
-    }
-
-    public override void RemoveParticle(int i, Particle p)
-    {
-        Multimesh.VisibleInstanceCount = Math.Max(0, Multimesh.VisibleInstanceCount - 1);
-        base.RemoveParticle(i, p);
     }
 
     public override void OnDeath(int i, Particle p)
