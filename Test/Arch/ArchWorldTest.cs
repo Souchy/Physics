@@ -42,8 +42,11 @@ public class ArchWorldTest
         Assert.NotEqual(entt1.Version, entt2.Version);
         world1.Destroy(entt2);
 
-        // Entity comes back to life in new world + new entity
+        // Destroy world
         world1.Dispose();
+        World.Destroy(world1); // -> calls world.Dispose()
+
+        // Entity comes back to life in new world + new entity
         var world2 = World.Create();
         var entt3 = world2.Create(v2); // { id: 1, world: 1, version: 1, pos: [2,2] }
         Assert.True(entt1.IsAlive());
