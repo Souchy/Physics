@@ -5,6 +5,9 @@ using System.Collections.Generic;
 
 namespace Physics.Mains.v4;
 
+/// <summary>
+/// https://worldeater-dev.itch.io/bittersweet-birthday/devlog/210789/howto-drawing-a-metric-ton-of-bullets-in-godot
+/// </summary>
 public class MainPhysicsServer(Node mainNode, Vector2 backgroundSize) : v3.MainMultimesh(mainNode, backgroundSize)
 {
 
