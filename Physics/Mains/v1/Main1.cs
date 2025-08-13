@@ -20,6 +20,25 @@ public class Particle(Vector2 position, Vector2 velocity, Color color)
     public int DetectionMask = 0; // Mask to detect other objects. If >0, detect objects with matching layers.
     public int CollisionLayer = 0; // Layers this object is in
 
+    public Dictionary<string, object> CustomData { get; set; } = [];
+
+    public T Get<T>(string key = null)
+    {
+        if (CustomData.TryGetValue(key ?? typeof(T).Name, out var value) && value is T typedValue)
+        {
+            return typedValue;
+        }
+        return default!;
+    }
+    public void Set<T>(T value)
+    {
+        CustomData[typeof(T).Name] = value;
+    }
+    public void Set<T>(string key, T value)
+    {
+        CustomData[key] = value;
+    }
+
     public const double CollisionImmunityTimer = 0.2;
     public Action<Particle, Particle, Vector2, float, bool> OnCollision = (p, p2, deltaPos, distSquared, isInitiator) => { };
 }
