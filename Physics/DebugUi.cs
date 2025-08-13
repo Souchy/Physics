@@ -30,7 +30,7 @@ public partial class DebugUi : Control
 
         // Update FPS over time
         frames++;
-        if (frames > 1 * 60 && frames < 30 * 60) //Main.Instance.particles.Count >= 3000)
+        if (frames > 5 * 60 && frames < 30 * 60) //Main.Instance.particles.Count >= 3000)
         {
             totalFpsOverTime += Engine.GetFramesPerSecond();
             actualFrames++;
