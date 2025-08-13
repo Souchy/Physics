@@ -75,7 +75,7 @@ public class Quadtree<T>
     }
 
 
-    public void Split()
+    public virtual void Split()
     {
         // Split the current node into four subnodes
         int childDepth = Depth + 1;
@@ -92,7 +92,7 @@ public class Quadtree<T>
     }
 
 
-    public void Clear()
+    public virtual void Clear()
     {
         Data.Clear();
         Data.Capacity = DATA_CAPACITY;
@@ -102,7 +102,7 @@ public class Quadtree<T>
         Children = [];
     }
 
-    public void Insert(T item, Vector2 pos)
+    public virtual void Insert(T item, Vector2 pos)
     {
         if (HasChildren)
         {
@@ -131,7 +131,7 @@ public class Quadtree<T>
     /// <summary>
     /// Inserts into every leaf that intersects with the item.
     /// </summary>
-    public void Insert(T item, Vector2 pos, float radius)
+    public virtual void Insert(T item, Vector2 pos, float radius)
     {
         if (HasChildren)
         {
@@ -170,7 +170,7 @@ public class Quadtree<T>
     /// <param name="item">Item to remove from data</param>
     /// <param name="pos">Item position</param>
     /// <returns>True if this node was updated</returns>
-    public bool Remove(T item, Vector2 pos)
+    public virtual bool Remove(T item, Vector2 pos)
     {
         if (HasChildren)
         {
@@ -196,7 +196,7 @@ public class Quadtree<T>
         return true;
     }
 
-    public List<Quadtree<T>> QueryNodes(Rect2 area, List<Quadtree<T>> nodes)
+    public virtual List<Quadtree<T>> QueryNodes(Rect2 area, List<Quadtree<T>> nodes)
     {
         if (!Bounds.Intersects(area))
             return nodes;
@@ -215,7 +215,7 @@ public class Quadtree<T>
         return nodes;
     }
 
-    public List<Quadtree<T>> QueryNodes(Vector2 point, float radius, List<Quadtree<T>> nodes)
+    public virtual List<Quadtree<T>> QueryNodes(Vector2 point, float radius, List<Quadtree<T>> nodes)
     {
         if (!this.Intersects(point, radius))
             return nodes;
@@ -234,7 +234,7 @@ public class Quadtree<T>
         return nodes;
     }
 
-    public Quadtree<T> GetNode(Vector2 point)
+    public virtual Quadtree<T> GetNode(Vector2 point)
     {
         if (HasChildren)
         {
@@ -246,7 +246,7 @@ public class Quadtree<T>
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public int GetIndexForPoint(Vector2 pos)
+    public virtual int GetIndexForPoint(Vector2 pos)
     {
         int index = 0;
         if (pos.X >= Center.X) index += 1; // Right

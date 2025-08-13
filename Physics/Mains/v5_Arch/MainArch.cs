@@ -1,6 +1,7 @@
 using Arch.Core;
 using Arch.Core.Extensions;
 using Godot;
+using Physics.Mains.v1;
 using Physics.Mains.v5_Arch;
 using Physics.Utils;
 using System;
@@ -20,26 +21,30 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
     #region Nodes
     public Node2D SpritesPool { get; set; } = null!;
     #endregion
+    public MultiMeshInstance2D MultiMeshInstance;
+    public MultiMesh Multimesh;
+    public Texture2D texture;
 
-    public int ParticleCount => particleDict.Count;
+    public int ParticleCount => particles.Count; //particleDict.Count;
 
     public World world;
     public QueryDescription movementQuery = new QueryDescription().WithAll<Position, Velocity>();
 
     public IntId ids = new();
-    public List<Entity> particles = [];
-    public Dictionary<int, Entity> particleDict = [];
-    public Quadtree<int> quadtree;
-    public Texture2D texture;
+    public List<Entity> particles;
+    //public Dictionary<int, Entity> particleDict = [];
+    public Quadtree<Entity> quadtree;
+    private Quadtree<Entity> quadtreeSwap;
+    private Quadtree<Entity> quadtreeThread;
 
-    public MultiMeshInstance2D MultiMeshInstance;
-    private MultiMesh Multimesh;
 
     public void OnReady()
     {
         var size = backgroundSize;
         var bounds = new Rect2(Vector2.Zero, size);
-        quadtree = new Quadtree<int>(0, bounds);
+        quadtree = new EntityQuadtree(0, bounds);
+        particles = new(10_000);
+
         SpritesPool = mainNode.GetNode<Node2D>("%SpritesPool");
         texture = GD.Load<Texture2D>("res://Assets/right-arrow.png");
 
@@ -65,6 +70,23 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
 
     public void Start()
     {
+        Scheduler.RunTimed(16, (delta) =>
+        {
+            var bounds = new Rect2(Vector2.Zero, backgroundSize);
+            quadtreeSwap = quadtreeThread;
+            quadtreeThread = new(0, bounds);
+            List<Entity> copy;
+            lock (particles)
+            {
+                copy = new(particles);
+            }
+            // Update quadtree(s)
+            foreach (var p in copy)
+            {
+                if (p.Get<CollisionLayer>().Value != 0)
+                    quadtreeThread.Insert(p, p.Get<Position>().Value);
+            }
+        });
     }
 
     public void AddParticles(int count, int team, int detectionMask, int collisionLayer, Color color)
@@ -94,9 +116,11 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
         position.X = Mathf.Cos(angle);
         position.Y = Mathf.Sin(angle);
         position *= 500;
-        position += backgroundSize / 2f; // Offset to center the particles in the background
 
+        // Velocity = -position when centered
         Vector2 velocity = -position.Normalized() * 200f;
+        // Offset to center the particles in the background
+        position += backgroundSize / 2f;
 
         var entt = world.Create(
             new Id(id),
@@ -104,6 +128,7 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
             new Velocity(velocity),
             new Size(newSize),
             new Modulate(color),
+            new Alive(true),
             new Life(10),
             new CollisionImmunityTime(0),
             new CollisionLayer(collisionLayer),
@@ -134,7 +159,7 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
         );
 
         particles.Add(entt);
-        particleDict[id] = entt;
+        //particleDict[id] = entt;
         //AddParticleSprite(p);
         return id;
     }
@@ -158,18 +183,13 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
         Multimesh.VisibleInstanceCount = Math.Max(0, Multimesh.VisibleInstanceCount - 1);
         var id = p.Get<Id>().Value;
         particles.RemoveAt(i);
-        particleDict.Remove(id);
+        //particleDict.Remove(id);
         ids.ReleaseId(id);
     }
 
     public void PhysicsProcess(double delta)
     {
         //base.PhysicsProcess(delta);
-        // Iterating over all entities that have Position & Velocity to make them move. 
-        world.Query(in movementQuery, (Entity entity, ref Position pos, ref Velocity vel) =>
-        {
-            pos.Value += vel.Value;
-        });
         UpdateQuadtree(delta);
         UpdatePhysics(delta);
         UpdateNodes(delta);
@@ -178,12 +198,18 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
     public virtual void UpdateQuadtree(double delta)
     {
         // Update quadtree(s)
-        quadtree.Clear();
-        foreach (var p in particles)
+        //quadtree.Clear();
+        //foreach (var p in particles)
+        //{
+        //    if (p.Get<CollisionLayer>().Value != 0)
+        //        quadtree.Insert(p, p.Get<Position>().Value); // 160-190 avg fps
+        //    //quadtree.Insert(p.id, p.Position, p.Size / 2f); // 30 avg fps
+        //}
+        if (quadtreeSwap != null)
         {
-            if (p.Get<CollisionLayer>().Value != 0)
-                quadtree.Insert(p.Get<Id>().Value, p.Get<Position>().Value); // 160-190 avg fps
-            //quadtree.Insert(p.id, p.Position, p.Size / 2f); // 30 avg fps
+            // Swap quadtree references
+            quadtree = quadtreeSwap;
+            quadtreeSwap = null;
         }
     }
 
@@ -212,7 +238,7 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
             {
                 var p = particles[i];
                 // Remove dead particles
-                if (!p.Get<Alive>().Value)
+                if (p.Get<Alive>().Value == false)
                 {
                     // remove from data (stop iterating it)
                     RemoveParticle(i, p);
@@ -229,11 +255,13 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
 
     public void UpdateParticleNode(int i, Entity p, double delta)
     {
+        ref var position = ref p.Get<Position>();
+        ref var velocity = ref p.Get<Velocity>();
         // Update position
-        p.Get<Position>().Value += p.Get<Velocity>().Value * (float) delta;
+        position.Value += velocity.Value * (float) delta;
 
         //// Update sprite
-        Multimesh.SetInstanceTransform2D(i, new Transform2D(p.Get<Velocity>().Value.Angle(), p.Get<Position>().Value));
+        Multimesh.SetInstanceTransform2D(i, new Transform2D(velocity.Value.Angle(), position.Value));
         Multimesh.SetInstanceColor(i, p.Get<Modulate>().Value);
     }
 
@@ -265,10 +293,10 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
         var nodes = quadtree.QueryNodes(position1.Value, size1.Value / 2f, []);
         foreach (var node in nodes)
         {
-            foreach (var id in node.Data)
+            foreach (var p2 in node.Data)
             {
-                if (id == id1.Value) continue;
-                if (particleDict.TryGetValue(id, out var p2) == false) continue; // Skip if particle not found
+                if (p2.Get<Id>().Value == id1.Value) continue;
+                //if (particleDict.TryGetValue(id, out var p2) == false) continue; // Skip if particle not found
                 if (p2.Get<Alive>().Value == false) continue;
                 if (p2.Get<CollisionImmunityTime>().Value > 0) continue; // Skip if immune to collisions
                 int collisionLayer2 = p2.Get<CollisionLayer>().Value;
@@ -288,7 +316,6 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
         float particleRadiusSum = p1.Get<Size>().Value; // + p2.Size;
         if (distSquared < particleRadiusSum * particleRadiusSum)
         {
-
             p1.Get<OnCollision>().Value(p1, p2, deltaPos, distSquared, true);
             p2.Get<OnCollision>().Value(p2, p1, deltaPos, distSquared, false);
             return true;

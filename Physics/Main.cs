@@ -5,6 +5,7 @@ using Physics.Mains.v1;
 using Physics.Mains.v2;
 using Physics.Mains.v3;
 using Physics.Mains.v4;
+using Physics.Mains.v5;
 
 namespace Physics;
 
@@ -26,7 +27,9 @@ public partial class Main : Node2D
 
         //gameLoop = new Main1(this, Background.Size);
         //gameLoop = new MainThreadInsert(this, Background.Size);
-        gameLoop = new MainMultimesh(this, Background.Size);
+        //gameLoop = new MainMultimesh(this, Background.Size);
+        gameLoop = new MainArch(this, Background.Size);
+
         //gameLoop = new MainPhysicsServer(this, Background.Size);
         gameLoop.OnReady();
         gameLoop.AddParticles(500, team: 2, detectionMask: 1, collisionLayer: 0, new Color(0, 0, 1));
