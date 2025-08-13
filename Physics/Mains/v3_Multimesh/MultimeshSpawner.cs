@@ -20,6 +20,11 @@ public class MultimeshSpawner
 {
     public MultiMeshInstance2D MultiMeshInstance;
     public MultiMesh Multimesh;
+    public int VisibleCount
+    {
+        get; // => Multimesh.VisibleInstanceCount;
+        set; // => Multimesh.VisibleInstanceCount = value;
+    }
 
     public MultimeshSpawner(Texture2D texture, Vector2 quadSize, MultimeshSpawnerFlags flags = MultimeshSpawnerFlags.None, int startCount = 0)
     {
@@ -46,18 +51,33 @@ public class MultimeshSpawner
     public void AddInstances(int count)
     {
         // Manage visible instances
-        int toVisible = Multimesh.InstanceCount - Multimesh.VisibleInstanceCount;
+        //int toVisible = Multimesh.InstanceCount - Multimesh.VisibleInstanceCount;
+        int toVisible = Multimesh.InstanceCount - VisibleCount;
         toVisible = Math.Min(toVisible, count);
-        Multimesh.VisibleInstanceCount += toVisible;
+        //Multimesh.VisibleInstanceCount += toVisible;
+        VisibleCount += toVisible;
         count -= toVisible;
 
         Multimesh.InstanceCount += count;
         Multimesh.VisibleInstanceCount += count;
+        VisibleCount += count;
     }
 
     public void RemoveInstances(int count)
     {
-        Multimesh.VisibleInstanceCount = Math.Max(0, Multimesh.VisibleInstanceCount - count);
+        //Multimesh.VisibleInstanceCount = Math.Max(0, Multimesh.VisibleInstanceCount - count);
+
+        int newVisibleCount  = Math.Max(0, VisibleCount - count);
+        count = VisibleCount - newVisibleCount;
+        VisibleCount = newVisibleCount;
+
+        Multimesh.VisibleInstanceCount = VisibleCount;
+        // make it black
+        //for (int i = 0; i < count; i++)
+        //{
+        //    int index = VisibleCount + i;
+        //    Multimesh.SetInstanceColor(index, new Color(0, 1, 0, 1));
+        //}
     }
 
     public void RemoveInstance()

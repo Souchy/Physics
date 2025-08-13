@@ -29,10 +29,28 @@ public class EntityQuadtree : Quadtree<Entity>
             Split();
             foreach (var dataItem in Data)
             {
-                Insert(dataItem, dataItem.Get<Position>().Value); // Fix using the position of reinserted moved entity
+                this.Insert(dataItem, dataItem.Get<Position>().Value); // Fix using the position of reinserted moved entity
             }
             Data.Clear();
             Data.Capacity = DATA_CAPACITY;
         }
     }
+
+    public override void Split()
+    {
+        // Split the current node into four subnodes
+        int childDepth = Depth + 1;
+        Children = [
+            // NW
+            new EntityQuadtree(childDepth, new Rect2(Bounds.Position, HalfSize)),
+            // NE
+            new EntityQuadtree(childDepth, new Rect2(Bounds.Position + new Vector2(HalfSize.X, 0), HalfSize)),
+            // SW
+            new EntityQuadtree(childDepth, new Rect2(Bounds.Position + new Vector2(0, HalfSize.Y), HalfSize)),
+            // SE
+            new EntityQuadtree(childDepth, new Rect2(Center, HalfSize))
+        ];
+    }
+
+
 }

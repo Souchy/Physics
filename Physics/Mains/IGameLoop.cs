@@ -13,7 +13,7 @@ public interface IGameLoop
     public void AddParticles(int count, int team, int detectionMask, int collisionLayer, Color color);
     public void AddParticles(int count)
     {
-        AddParticles(count, team: 1, detectionMask: 0, collisionLayer: 1, new Color(0, 0, 1));
+        AddParticles(count, team: 1, detectionMask: 0, collisionLayer: 1, new Color(1, 0, 0));
     }
     public void RemoveParticles(int count);
 

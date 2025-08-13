@@ -25,3 +25,7 @@ window/vsync/vsync_mode=0
 [dotnet]
 
 project/assembly_name="Physics"
+
+[physics]
+
+2d/run_on_separate_thread=true

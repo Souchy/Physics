@@ -40,7 +40,7 @@ public class Quadtree<T>
     public const int MAX_DEPTH = 5; // Maximum levels of the quadtree
 
     public int Depth { get; init; } = 0;
-    public Quadtree<T>[] Children { get; private set; } = [];
+    public Quadtree<T>[] Children { get; protected set; } = [];
     public List<T> Data = new(DATA_CAPACITY); // List of things stored in this node. May use entity references or indexes.
 
     private Rect2 _bounds;

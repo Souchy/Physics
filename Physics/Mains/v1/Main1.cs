@@ -9,12 +9,12 @@ namespace Physics.Mains.v1;
 public class Particle(Vector2 position, Vector2 velocity, Color color)
 {
     public int id;
-    public int Life { get; set; } = 10;
-    public bool Alive { get; set; } = true;
-    public double CollisionImmunityTime = 0.5;
     public Vector2 Position { get; set; } = position;
     public Vector2 Velocity { get; set; } = velocity;
     public Color Color { get; set; } = color;
+    public int Life { get; set; } = 10;
+    public bool Alive { get; set; } = true;
+    public double CollisionImmunityTime = 0.5;
     public Node2D? Sprite { get; set; }
     public float Size = 32f;
     public int DetectionMask = 0; // Mask to detect other objects. If >0, detect objects with matching layers.

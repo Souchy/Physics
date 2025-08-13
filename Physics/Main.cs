@@ -15,7 +15,7 @@ public partial class Main : Node2D
 
     [NodePath] public Camera2D Camera2D { get; set; }
     [NodePath] public ColorRect Background { get; set; } = null!;
-    //[NodePath] public Node2D QuadtreeLines { get; set; } = null!;
+    [NodePath] public Node2D QuadtreeLines { get; set; } = null!;
 
     public IGameLoop gameLoop;
 
@@ -67,35 +67,7 @@ public partial class Main : Node2D
 
     //public override void _Process(double delta)
     //{
-    //    QuadtreeLines.RemoveAndQueueFreeChildren();
-    //    DrawChunks(quadtree, 0, Quadtree<int>.MAX_DEPTH);
-    //}
-
-    //private void DrawChunks<T>(Quadtree<T> chunk, int depth, int totalDepth)
-    //{
-    //    if (chunk.IsLeaf) return;
-    //    foreach (var child in chunk.Children)
-    //        DrawChunks(child, depth + 1, totalDepth);
-
-    //    float hue = (float) depth / (float) totalDepth;
-    //    float width = 5f * (1f - hue);
-    //    Color color = Color.FromHsv(hue, 1, 1, (1f - hue));
-
-    //    var v = new Line2D();
-    //    v.AddPoint(new Vector2(chunk.Center.X, chunk.Center.Y - chunk.HalfSize.Y));
-    //    v.AddPoint(new Vector2(chunk.Center.X, chunk.Center.Y + chunk.HalfSize.Y));
-    //    v.DefaultColor = color;
-    //    v.Width = width;
-
-    //    var h = new Line2D();
-    //    h.AddPoint(new Vector2(chunk.Center.X - chunk.HalfSize.X, chunk.Center.Y));
-    //    h.AddPoint(new Vector2(chunk.Center.X + chunk.HalfSize.X, chunk.Center.Y));
-    //    h.DefaultColor = color;
-    //    h.Width = width;
-
-    //    QuadtreeLines.AddChild(v);
-    //    QuadtreeLines.AddChild(h);
-    //    //GD.Print("Draw " + chunk.Center);
+    //    gameLoop.Process(delta);
     //}
 
 }

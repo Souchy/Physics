@@ -1,7 +1,9 @@
 using Arch.Core;
 using Arch.Core.Extensions;
 using Godot;
+using Godot.Sharp.Extras;
 using Physics.Mains.v1;
+using Physics.Mains.v3_Multimesh;
 using Physics.Mains.v5_Arch;
 using Physics.Utils;
 using System;
@@ -21,9 +23,8 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
     #region Nodes
     public Node2D SpritesPool { get; set; } = null!;
     #endregion
-    public MultiMeshInstance2D MultiMeshInstance;
-    public MultiMesh Multimesh;
     public Texture2D texture;
+    public MultimeshSpawner spawner;
 
     public int ParticleCount => particles.Count; //particleDict.Count;
 
@@ -48,22 +49,8 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
         SpritesPool = mainNode.GetNode<Node2D>("%SpritesPool");
         texture = GD.Load<Texture2D>("res://Assets/right-arrow.png");
 
-        MultiMeshInstance = new MultiMeshInstance2D()
-        {
-            Texture = texture,
-            Multimesh = new MultiMesh()
-            {
-                TransformFormat = MultiMesh.TransformFormatEnum.Transform2D,
-                InstanceCount = 0,
-                UseColors = true,
-                Mesh = new QuadMesh()
-                {
-                    Size = new Vector2(newSize, newSize),
-                },
-            },
-        };
-        Multimesh = MultiMeshInstance.Multimesh;
-        SpritesPool.AddChild(MultiMeshInstance);
+        spawner = new(texture, new Vector2(newSize, newSize), MultimeshSpawnerFlags.Color);
+        SpritesPool.AddChild(spawner.MultiMeshInstance);
 
         world = World.Create();
     }
@@ -74,7 +61,7 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
         {
             var bounds = new Rect2(Vector2.Zero, backgroundSize);
             quadtreeSwap = quadtreeThread;
-            quadtreeThread = new(0, bounds);
+            quadtreeThread = new EntityQuadtree(0, bounds);
             List<Entity> copy;
             lock (particles)
             {
@@ -84,7 +71,10 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
             foreach (var p in copy)
             {
                 if (p.Get<CollisionLayer>().Value != 0)
-                    quadtreeThread.Insert(p, p.Get<Position>().Value);
+                {
+                    var pos = p.Get<Position>().Value;
+                    quadtreeThread.Insert(p, pos);
+                }
             }
         });
     }
@@ -92,15 +82,7 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
     public void AddParticles(int count, int team, int detectionMask, int collisionLayer, Color color)
     {
         // Manage visible instances
-        {
-            int toVisible = Multimesh.InstanceCount - Multimesh.VisibleInstanceCount;
-            toVisible = Math.Min(toVisible, count);
-            Multimesh.VisibleInstanceCount += toVisible;
-            count -= toVisible;
-
-            Multimesh.InstanceCount += count;
-            Multimesh.VisibleInstanceCount += count;
-        }
+        spawner.AddInstances(count);
 
         for (int i = 0; i < count; i++)
             AddParticle(team, detectionMask, collisionLayer, color);
@@ -115,10 +97,23 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
         float angle = GD.Randf() * Mathf.Tau;
         position.X = Mathf.Cos(angle);
         position.Y = Mathf.Sin(angle);
-        position *= 500;
+        position *= 300;
+
+
 
         // Velocity = -position when centered
         Vector2 velocity = -position.Normalized() * 200f;
+        //if (team == 1)
+        //{
+        //    //velocity = Vector2.Zero;
+        //    //position = new(40 * id, 50);
+        //}
+        //else
+        //{
+        //    position = new(-200, 50);
+        //    //velocity *= 5;
+        //    velocity = new Vector2(600, 0);
+        //}
         // Offset to center the particles in the background
         position += backgroundSize / 2f;
 
@@ -146,7 +141,7 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
                 }
                 else
                 {
-                    velocity.Value = velocity.Value.Bounce(-deltaPos.Normalized());
+                    //velocity.Value = velocity.Value.Bounce(-deltaPos.Normalized());
                     if (p.Get<CollisionLayer>().Value != p2.Get<CollisionLayer>().Value)
                     {
                         ref var life = ref p.Get<Life>();
@@ -166,8 +161,8 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
 
     public void RemoveParticles(int count)
     {
-        Multimesh.VisibleInstanceCount = Math.Max(0, Multimesh.VisibleInstanceCount - count);
-        //base.RemoveParticles(count);
+        spawner.RemoveInstances(count);
+
         count = Math.Min(count, ParticleCount);
         for (int c = 0; c < count; c++)
         {
@@ -179,8 +174,8 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
     }
     public void RemoveParticle(int i, Entity p)
     {
-        //base.RemoveParticle(i, p);
-        Multimesh.VisibleInstanceCount = Math.Max(0, Multimesh.VisibleInstanceCount - 1);
+        //spawner.RemoveInstance();
+
         var id = p.Get<Id>().Value;
         particles.RemoveAt(i);
         //particleDict.Remove(id);
@@ -208,7 +203,9 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
         if (quadtreeSwap != null)
         {
             // Swap quadtree references
+            //quadtree.Clear();
             quadtree = quadtreeSwap;
+            //quadtreeSwap.Clear();
             quadtreeSwap = null;
         }
     }
@@ -233,6 +230,9 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
 
     public virtual void UpdateNodes(double delta)
     {
+        //List<int> deads = [];
+        int dead = 0;
+        int mmi = 0;
         lock (particles)
             for (int i = particles.Count - 1; i >= 0; i--)
             {
@@ -240,6 +240,7 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
                 // Remove dead particles
                 if (p.Get<Alive>().Value == false)
                 {
+                    dead++;
                     // remove from data (stop iterating it)
                     RemoveParticle(i, p);
                     // remove from sprites nodes after timer
@@ -248,9 +249,11 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
                 // Update alive particles
                 else
                 {
-                    UpdateParticleNode(i, p, delta);
+                    UpdateParticleNode(mmi, p, delta);
+                    mmi++;
                 }
             }
+        spawner.RemoveInstances(dead);
     }
 
     public void UpdateParticleNode(int i, Entity p, double delta)
@@ -261,8 +264,7 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
         position.Value += velocity.Value * (float) delta;
 
         //// Update sprite
-        Multimesh.SetInstanceTransform2D(i, new Transform2D(velocity.Value.Angle(), position.Value));
-        Multimesh.SetInstanceColor(i, p.Get<Modulate>().Value);
+        spawner.UpdateInstance(i, position.Value, velocity.Value, p.Get<Modulate>().Value);
     }
 
     public void AddParticleSprite(Entity p)
@@ -290,7 +292,7 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
         //var node = quadtree.GetNode(p1.Position); // 30 avg fps with inserting in all overlapping nodes
 
         var (position1, size1) = p1.Get<Position, Size>();
-        var nodes = quadtree.QueryNodes(position1.Value, size1.Value / 2f, []);
+        var nodes = quadtree.QueryNodes(position1.Value, size1.Value, []);
         foreach (var node in nodes)
         {
             foreach (var p2 in node.Data)
@@ -342,6 +344,39 @@ public class MainArch(Node mainNode, Vector2 backgroundSize) : IGameLoop //: Mai
             vy = Math.Abs(velocity.Value.Y);
 
         velocity.Value = new Vector2(vx, vy);
+    }
+
+    public void Process(double delta)
+    {
+        Main.Instance.QuadtreeLines.RemoveAndQueueFreeChildren();
+        DrawChunks(quadtree, 0, Quadtree<int>.MAX_DEPTH);
+    }
+
+    private void DrawChunks<T>(Quadtree<T> chunk, int depth, int totalDepth)
+    {
+        if (chunk.IsLeaf) return;
+        foreach (var child in chunk.Children)
+            DrawChunks(child, depth + 1, totalDepth);
+
+        float hue = (float) depth / (float) totalDepth;
+        float width = 5f * (1f - hue);
+        Color color = Color.FromHsv(hue, 1, 1, (1f - hue));
+
+        var v = new Line2D();
+        v.AddPoint(new Vector2(chunk.Center.X, chunk.Center.Y - chunk.HalfSize.Y));
+        v.AddPoint(new Vector2(chunk.Center.X, chunk.Center.Y + chunk.HalfSize.Y));
+        v.DefaultColor = color;
+        v.Width = width;
+
+        var h = new Line2D();
+        h.AddPoint(new Vector2(chunk.Center.X - chunk.HalfSize.X, chunk.Center.Y));
+        h.AddPoint(new Vector2(chunk.Center.X + chunk.HalfSize.X, chunk.Center.Y));
+        h.DefaultColor = color;
+        h.Width = width;
+
+        Main.Instance.QuadtreeLines.AddChild(v);
+        Main.Instance.QuadtreeLines.AddChild(h);
+        //GD.Print("Draw " + chunk.Center);
     }
 
 }
