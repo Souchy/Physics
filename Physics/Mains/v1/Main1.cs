@@ -59,59 +59,64 @@ public class Main1(Node mainNode, Vector2 backgroundSize) : IGameLoop
 
     public virtual void AddParticles(int count, int team, int detectionMask, int collisionLayer, Color color)
     {
-        int baseCount = particles.Count;
         for (int i = 0; i < count; i++) //int id = baseCount; id < baseCount + count; id++)
         {
-            Vector2 position = Vector2.Zero;
-            // set position randomly on a circle around the origin
-            float angle = GD.Randf() * Mathf.Tau;
-            position.X = Mathf.Cos(angle);
-            position.Y = Mathf.Sin(angle);
-            position *= 500;
-
-            Vector2 velocity = -position.Normalized() * 200f;
-
-            position += backgroundSize / 2f; // Offset to center the particles in the background
-
-            int id = ids.GetNextId(); // Get a unique ID for the particle
-
-            var p = new Particle(position, velocity, color)
-            {
-                id = id,
-                Size = newSize,
-                DetectionMask = detectionMask,
-                CollisionLayer = collisionLayer,
-            };
-            if (team == 2)
-            {
-                p.OnCollision = (p, p2, deltaPos, distSquared, isInitiator) =>
-                {
-                    // Bounce the velocity off the collision normal
-                    p.Velocity = p.Velocity.Bounce(deltaPos.Normalized());
-                    // immune to collisions
-                    p.CollisionImmunityTime = Particle.CollisionImmunityTimer;
-                };
-            }
-            if (team == 1)
-            {
-                p.OnCollision = (p, p2, deltaPos, distSquared, isInitiator) =>
-                {
-                    // Bounce + immune
-                    p.Velocity = p.Velocity.Bounce(-deltaPos.Normalized());
-                    p.CollisionImmunityTime = Particle.CollisionImmunityTimer;
-
-                    if (p.CollisionLayer != p2.CollisionLayer)
-                    {
-                        p.Life -= 1;
-                        if (p.Life <= 0)
-                            p.Alive = false;
-                    }
-                };
-            }
-            particles.Add(p);
-            particleDict[p.id] = p;
-            AddParticleSprite(p);
+            AddParticle(team, detectionMask, collisionLayer, color);
         }
+    }
+
+    public virtual int AddParticle(int team, int detectionMask, int collisionLayer, Color color)
+    {
+        Vector2 position = Vector2.Zero;
+        // set position randomly on a circle around the origin
+        float angle = GD.Randf() * Mathf.Tau;
+        position.X = Mathf.Cos(angle);
+        position.Y = Mathf.Sin(angle);
+        position *= 500;
+
+        Vector2 velocity = -position.Normalized() * 200f;
+
+        position += backgroundSize / 2f; // Offset to center the particles in the background
+
+        int id = ids.GetNextId(); // Get a unique ID for the particle
+
+        var p = new Particle(position, velocity, color)
+        {
+            id = id,
+            Size = newSize,
+            DetectionMask = detectionMask,
+            CollisionLayer = collisionLayer,
+        };
+        if (team == 2)
+        {
+            p.OnCollision = (p, p2, deltaPos, distSquared, isInitiator) =>
+            {
+                // Bounce the velocity off the collision normal
+                p.Velocity = p.Velocity.Bounce(deltaPos.Normalized());
+                // immune to collisions
+                p.CollisionImmunityTime = Particle.CollisionImmunityTimer;
+            };
+        }
+        if (team == 1)
+        {
+            p.OnCollision = (p, p2, deltaPos, distSquared, isInitiator) =>
+            {
+                // Bounce + immune
+                p.Velocity = p.Velocity.Bounce(-deltaPos.Normalized());
+                p.CollisionImmunityTime = Particle.CollisionImmunityTimer;
+
+                if (p.CollisionLayer != p2.CollisionLayer)
+                {
+                    p.Life -= 1;
+                    if (p.Life <= 0)
+                        p.Alive = false;
+                }
+            };
+        }
+        particles.Add(p);
+        particleDict[p.id] = p;
+        AddParticleSprite(p);
+        return id;
     }
 
     public virtual void AddParticleSprite(Particle p)
@@ -130,14 +135,13 @@ public class Main1(Node mainNode, Vector2 backgroundSize) : IGameLoop
     public virtual void RemoveParticles(int count)
     {
         count = Math.Min(count, particles.Count);
-        for (int i = 0; i < count; i++)
+        for (int c = 0; c < count; c++)
         {
-            var p = particles[particles.Count - 1];
+            int i = particles.Count - 1 - c; // Remove from the end
+
+            var p = particles[i];
             p.Sprite?.QueueFree();
-            particles.RemoveAt(particles.Count - 1);
-            particleDict.Remove(p.id);
-            ids.ReleaseId(p.id);
-            //quadtree.Remove(p.id, p.Position);
+            RemoveParticle(i, p);
         }
     }
 
@@ -162,38 +166,40 @@ public class Main1(Node mainNode, Vector2 backgroundSize) : IGameLoop
 
     public virtual void UpdatePhysics(double delta)
     {
-        // Update particle physics + nodes
-        foreach (var p in particles)
-        {
-            if (p.Alive == false) continue;
-            // Physics
-            DetectCollisions(p);
-            p.CollisionImmunityTime = Math.Max(0, p.CollisionImmunityTime - delta);
-            p.Color = new Color(p.Color, (float) (1 - p.CollisionImmunityTime));
+        lock (particles)
+            // Update particle physics + nodes
+            foreach (var p in particles)
+            {
+                if (p.Alive == false) continue;
+                // Physics
+                DetectCollisions(p);
+                p.CollisionImmunityTime = Math.Max(0, p.CollisionImmunityTime - delta);
+                p.Color = new Color(p.Color, (float) (1 - p.CollisionImmunityTime));
 
-            RespectBounds(p, backgroundSize);
-        }
+                RespectBounds(p, backgroundSize);
+            }
     }
 
     public virtual void UpdateNodes(double delta)
     {
-        for (int i = particles.Count - 1; i >= 0; i--)
-        {
-            var p = particles[i];
-            // Remove dead particles
-            if (!p.Alive)
+        lock (particles)
+            for (int i = particles.Count - 1; i >= 0; i--)
             {
-                // remove from data (stop iterating it)
-                RemoveParticle(i, p);
-                // remove from sprites nodes after timer
-                OnDeath(i, p);
+                var p = particles[i];
+                // Remove dead particles
+                if (!p.Alive)
+                {
+                    // remove from data (stop iterating it)
+                    RemoveParticle(i, p);
+                    // remove from sprites nodes after timer
+                    OnDeath(i, p);
+                }
+                // Update alive particles
+                else
+                {
+                    UpdateParticleNode(i, p, delta);
+                }
             }
-            // Update alive particles
-            else
-            {
-                UpdateParticleNode(i, p, delta);
-            }
-        }
     }
 
     public virtual void RemoveParticle(int i, Particle p)
@@ -237,7 +243,7 @@ public class Main1(Node mainNode, Vector2 backgroundSize) : IGameLoop
             foreach (var id in node.Data)
             {
                 if (id == p1.id) continue;
-                var p2 = particleDict[id];
+                if(particleDict.TryGetValue(id, out var p2) == false) continue; // Skip if particle not found
                 if (p2.Alive == false) continue;
                 if (p2.CollisionImmunityTime > 0) continue; // Skip if immune to collisions
                 if (p2.CollisionLayer == 0) continue; // Skip if p2 doesnt have collisions

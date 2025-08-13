@@ -1,26 +1,8 @@
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Running;
 using Godot;
-using Godot.Sharp.Extras;
 using Physics.Utils;
-using System;
-using System.Collections.Generic;
-using Xunit;
 
 namespace Benchmarks.Quadtree;
-
-public class QuadtreeBenchmarksXunit
-{
-    [Fact]
-    public void RunQuadtreeBenchmark()
-    {
-        // This will run the benchmarks and output results to the console and BenchmarkDotNet's output folder.
-        var summary = BenchmarkRunner.Run<QuadtreeBenchmark>();
-
-        // Optionally, add a simple assertion to prevent xUnit from optimizing away the call.
-        Assert.NotNull(summary);
-    }
-}
 
 [MemoryDiagnoser]
 public class QuadtreeBenchmark
