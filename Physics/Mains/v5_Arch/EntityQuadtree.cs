@@ -29,7 +29,8 @@ public class EntityQuadtree : Quadtree<Entity>
             Split();
             foreach (var dataItem in Data)
             {
-                this.Insert(dataItem, dataItem.Get<Position>().Value); // Fix using the position of reinserted moved entity
+                if (dataItem.IsAlive())
+                    this.Insert(dataItem, dataItem.Get<Position>().Value); // Fix using the position of reinserted moved entity
             }
             Data.Clear();
             Data.Capacity = DATA_CAPACITY;

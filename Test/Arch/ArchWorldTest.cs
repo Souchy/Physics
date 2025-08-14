@@ -120,6 +120,7 @@ public class ArchWorldTest
         var entt1 = world.Create(v1);
         world.Destroy(entt1);
 
+        // Entity dead
         Assert.False(entt1.IsAlive());
         Assert.Throws<NullReferenceException>(() => entt1.Get<Position>());
         Assert.Throws<NullReferenceException>(() => world.Get<Position>(entt1));
@@ -127,7 +128,7 @@ public class ArchWorldTest
 
         var entt2 = world.Create(v2);
 
-        // Entity dead
+        // Entity still dead because new version
         Assert.False(entt1.IsAlive());
 
         // Same id
@@ -142,7 +143,7 @@ public class ArchWorldTest
     }
 
     [Fact]
-    public void EntityShouldDieWhenWorldDies()
+    public void Entity_ThrowsException_AfterWorldDisposed()
     {
         // Arrange
         var world = World.Create();
@@ -155,8 +156,9 @@ public class ArchWorldTest
         var a = World.Worlds[entt.WorldId];
         var pos = world.Get<Position>(entt);
 
+        Assert.Throws<NullReferenceException>(() => entt.IsAlive());
         //Assert.True(entt.IsAlive(), "Entity should not be alive after the world is disposed.");
-        Assert.Throws<NullReferenceException>(() => entt.Get<Position>());
         Assert.Null(World.Worlds[entt.WorldId]);
+        Assert.Throws<NullReferenceException>(() => entt.Get<Position>());
     }
 }

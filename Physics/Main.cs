@@ -28,15 +28,20 @@ public partial class Main : Node2D
         //gameLoop = new Main1(this, Background.Size);
         //gameLoop = new MainThreadInsert(this, Background.Size);
         //gameLoop = new MainMultimesh(this, Background.Size);
-        gameLoop = new MainArch(this, Background.Size);
+        //gameLoop = new MainArch(this, Background.Size);
+        gameLoop = new MainArchSystems(this, Background.Size);
 
         //gameLoop = new MainPhysicsServer(this, Background.Size);
         gameLoop.OnReady();
         gameLoop.AddParticles(500, team: 2, detectionMask: 1, collisionLayer: 0, new Color(0, 0, 1));
-        gameLoop.AddParticles(8000, team: 1, detectionMask: 0, collisionLayer: 1, new Color(1, 0, 0));
+        gameLoop.AddParticles(4000, team: 1, detectionMask: 0, collisionLayer: 1, new Color(1, 0, 0));
         gameLoop.Start();
     }
 
+    //public override void _Process(double delta)
+    //{
+    //    gameLoop.Process(delta);
+    //}
 
     public override void _PhysicsProcess(double delta)
     {
@@ -65,9 +70,5 @@ public partial class Main : Node2D
         }
     }
 
-    //public override void _Process(double delta)
-    //{
-    //    gameLoop.Process(delta);
-    //}
 
 }
