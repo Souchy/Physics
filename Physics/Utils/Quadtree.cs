@@ -74,23 +74,26 @@ public class Quadtree<T>
         Bounds = bounds;
     }
 
-
     public virtual void Split()
     {
         // Split the current node into four subnodes
         int childDepth = Depth + 1;
         Children = [
             // NW
-            new Quadtree<T>(childDepth, new Rect2(Bounds.Position, HalfSize)),
+            CreateThis(childDepth, new Rect2(Bounds.Position, HalfSize)),
             // NE
-            new Quadtree<T>(childDepth, new Rect2(Bounds.Position + new Vector2(HalfSize.X, 0), HalfSize)),
+            CreateThis(childDepth, new Rect2(Bounds.Position + new Vector2(HalfSize.X, 0), HalfSize)),
             // SW
-            new Quadtree<T>(childDepth, new Rect2(Bounds.Position + new Vector2(0, HalfSize.Y), HalfSize)),
+            CreateThis(childDepth, new Rect2(Bounds.Position + new Vector2(0, HalfSize.Y), HalfSize)),
             // SE
-            new Quadtree<T>(childDepth, new Rect2(Center, HalfSize))
+            CreateThis(childDepth, new Rect2(Center, HalfSize))
         ];
     }
 
+    public virtual Quadtree<T> CreateThis(int depth, Rect2 bounds)
+    {
+        return new Quadtree<T>(Depth, Bounds);
+    }
 
     public virtual void Clear()
     {
@@ -157,11 +160,16 @@ public class Quadtree<T>
             Split();
             foreach (var dataItem in Data)
             {
-                Insert(dataItem, pos);
+                Reinsert(dataItem, pos);
             }
             Data.Clear();
             Data.Capacity = DATA_CAPACITY;
         }
+    }
+
+    protected virtual void Reinsert(T dataItem, Vector2 inserterPos)
+    {
+        this.Insert(dataItem, inserterPos);
     }
 
     /// <summary>
