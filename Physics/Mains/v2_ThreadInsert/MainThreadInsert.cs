@@ -10,8 +10,8 @@ namespace Physics.Mains.v2;
 public class MainThreadInsert(Node mainNode, Vector2 backgroundSize) : Main1(mainNode, backgroundSize), IGameLoop
 {
 
-    private Quadtree<int> quadtreeSwap;
-    private Quadtree<int> quadtreeThread;
+    public Quadtree<int> quadtreeSwap;
+    public Quadtree<int> quadtreeThread;
 
     public override void Start()
     {
