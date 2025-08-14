@@ -6,6 +6,43 @@ using System.Collections.Generic;
 
 namespace Physics.Mains.v1;
 
+public struct ParticleStruct(Vector2 position, Vector2 velocity, Color color)
+{
+    public int id;
+    public Vector2 Position { get; set; } = position;
+    public Vector2 Velocity { get; set; } = velocity;
+    public Color Color { get; set; } = color;
+    public int Life { get; set; } = 10;
+    public bool Alive { get; set; } = true;
+    public double CollisionImmunityTime = 0.5;
+    public Node2D? Sprite { get; set; }
+    public float Size = 32f;
+    public int DetectionMask = 0; // Mask to detect other objects. If >0, detect objects with matching layers.
+    public int CollisionLayer = 0; // Layers this object is in
+
+    public Dictionary<string, object> CustomData { get; set; } = [];
+
+    public T Get<T>(string key = null)
+    {
+        if (CustomData.TryGetValue(key ?? typeof(T).Name, out var value) && value is T typedValue)
+        {
+            return typedValue;
+        }
+        return default!;
+    }
+    public void Set<T>(T value)
+    {
+        CustomData[typeof(T).Name] = value;
+    }
+    public void Set<T>(string key, T value)
+    {
+        CustomData[key] = value;
+    }
+
+    public const double CollisionImmunityTimer = 0.2;
+    public Action<Particle, Particle, Vector2, float, bool> OnCollision = (p, p2, deltaPos, distSquared, isInitiator) => { };
+}
+
 public class Particle(Vector2 position, Vector2 velocity, Color color)
 {
     public int id;
