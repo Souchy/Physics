@@ -42,7 +42,7 @@ public class MainMultimeshThreads(Node mainNode, Vector2 backgroundSize) : MainT
         }
     }
 
-    private Collision[] allCollisions = new Collision[500];
+    private Collision[] allCollisions = new Collision[Main.TEAM_2];
     public override void UpdatePhysics(double delta)
     {
         //lock (particles)
@@ -58,42 +58,36 @@ public class MainMultimeshThreads(Node mainNode, Vector2 backgroundSize) : MainT
         //        RespectBounds(p, backgroundSize);
         //    }
 
-        //int chunkSize = 500;
-        //int chunkCount = (ParticleCount + chunkSize - 1) / chunkSize;
 
+        // Cache locality may be worse with multiple threads accessing memory
+        // Chunk loops are awful
         Parallel.For(0, ParticleCount, i =>
-        //Parallel.For(0, chunkCount, chunkIdx =>
         {
-            //int start = chunkIdx * chunkSize;
-            //int end = Math.Min(start + chunkSize, ParticleCount);
+            var p1 = particles[i];
+            if (!p1.Alive) return; // pense qu'on en a plus besoin vu que les collisions qui kill arrivent après
 
-            //for (int i = start; i < end; i++)
-            //{
-                var p1 = particles[i];
-                if (!p1.Alive) return; // pense qu'on en a plus besoin vu que les collisions qui kill arrivent après
+            // 2
+            RespectBounds(p1, backgroundSize);
 
-                // 2
-                RespectBounds(p1, backgroundSize);
+            // 3
+            p1.CollisionImmunityTime = Math.Max(0, p1.CollisionImmunityTime - delta);
+            p1.Color = new Color(p1.Color, (float) (1 - p1.CollisionImmunityTime));
+            // Update position
+            p1.Position += p1.Velocity * (float) delta;
 
-                // 3
-                p1.CollisionImmunityTime = Math.Max(0, p1.CollisionImmunityTime - delta);
-                p1.Color = new Color(p1.Color, (float) (1 - p1.CollisionImmunityTime));
-                // Update position
-                p1.Position += p1.Velocity * (float) delta;
-
-                // 1
-                var nodesInArea = GetParticlesInArea(p1);
-                if (nodesInArea != null)
-                {
-                    var collisions = nodesInArea.SelectMany(n => n.Data)
-                        .Where(id => CanCollide(p1, id))
-                        .Select(id => particleDict[id])
-                        .Select(p2 => GetCollision(p1, p2))
-                        .Where(collision => collision.distSquared < p1.Size)
-                        .FirstOrDefault();
-                    allCollisions[i] = collisions;
-                }
-            //}
+            // 1
+            if (p1.CollisionImmunityTime > 0) return;
+            var nodesInArea = GetParticlesInArea(p1);
+            if (nodesInArea != null)
+            {
+                var collisions = nodesInArea.SelectMany(n => n.Data)
+                    .Where(id => CanCollide(p1, id))
+                    .Select(id => particleDict[id])
+                    .Select(p2 => GetCollision(p1, p2))
+                    .Where(collision => collision.distSquared < p1.Size)
+                    .FirstOrDefault();
+                allCollisions[i] = collisions;
+            }
         }
         );
 
