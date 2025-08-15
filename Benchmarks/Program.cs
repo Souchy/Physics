@@ -11,14 +11,14 @@ internal class Program
     static void Main(string[] args)
     {
         //BenchmarkRunner.Run<QuadtreeBenchmark>();
-
         //BenchmarkRunner.Run<SystemBenchmark>();
 
         var config = ManualConfig.Create(DefaultConfig.Instance)
-          .WithOptions(ConfigOptions.JoinSummary | ConfigOptions.DisableLogFile | ConfigOptions.StopOnFirstError);
+          .WithOptions(ConfigOptions.JoinSummary | ConfigOptions.StopOnFirstError);
 
         BenchmarkRunner.Run([
             BenchmarkConverter.TypeToBenchmarks( typeof(PhysicsClassBenchmark), config),
+            BenchmarkConverter.TypeToBenchmarks( typeof(PhysicsClassThreadBenchmark), config),
             BenchmarkConverter.TypeToBenchmarks( typeof(PhysicsEcsQueryBenchmark), config),
             BenchmarkConverter.TypeToBenchmarks( typeof(PhysicsEcsLowLevelBenchmark), config)
             ]);

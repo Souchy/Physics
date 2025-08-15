@@ -1,6 +1,9 @@
+using Arch.Core;
 using BenchmarkDotNet.Attributes;
 using Godot;
+using Microsoft.Diagnostics.Tracing.StackSources;
 using Physics.Utils;
+using System.Runtime.Intrinsics.X86;
 using static Godot.WebSocketPeer;
 
 namespace Benchmarks.Physics;
@@ -29,7 +32,14 @@ public class Particle(int id, Vector2 position, Vector2 velocity, Color color, i
     public bool Alive { get; set; } = true;
     public double CollisionImmunityTime = 0.5;
     public float Size = 32f;
+}
 
+public class ExtendedParticle : Particle
+{
+    public ExtendedParticle(int id, Vector2 position, Vector2 velocity, Color color, int mask, int layer)
+        : base(id, position, velocity, color, mask, layer)
+    {
+    }
     //public Node2D? Sprite { get; set; }
     public List<Item> items = [];
     public Dictionary<int, Stat> stats = [];
@@ -54,29 +64,58 @@ everything is one way.
 so threadable because A affects B, but B does not affect A.
  */
 
-[MemoryDiagnoser]
-public class PhysicsClassBenchmark
+public class PhysicsParameters : PhysicsLogs
 {
-
-    public const int TEAM_1 = 1_000;
-    public const int TEAM_2 = 10_000;
-    public const int COUNT = TEAM_1 + TEAM_2;
-    public static readonly Vector2 backgroundSize = new Vector2(1280, 720);
+    [Params(10_000, 50_000, 100_000)]
+    public int TEAM_1 { get; set; }
+    [Params(1_000, 5_000, 10_000, 50_000, 100_000)]
+    public int TEAM_2 { get; set; }
+    public int COUNT => TEAM_1 + TEAM_2;
+    public readonly Vector2 backgroundSize = new Vector2(1280, 720);
     public const float delta = 1f / 60f; // Simulating a frame time of 1/60 seconds
     public const double CollisionImmunityTimer = 0.1; // seconds
+}
 
+public class PhysicsLogs
+{
+    public bool logged = false;
+    public int frame = 0;
+    public int entityIterations = 0;
+    public int quadtreeInserts = 0;
+    public int destroyed = 0;
+    public int collisionEvents = 0;
+}
+
+[InProcess]
+[MemoryDiagnoser]
+public class PhysicsClassBenchmark : PhysicsParameters
+{
     public IntId ids = new();
-    public List<Particle> particles = new(COUNT);
-    public Dictionary<int, Particle> particleDict = new(COUNT);
-    public QuadtreeWithPosStruct<PositionId> quadtree = new(0, new Rect2(Vector2.Zero, backgroundSize));
+    public List<Particle> particles; // = new(COUNT);
+    public Dictionary<int, Particle> particleDict; // = new(COUNT);
+    public QuadtreeWithPosStruct<PositionId> quadtree; // = new(0, new Rect2(Vector2.Zero, backgroundSize));
     public Random rnd = new();
 
-
     [GlobalSetup]
-    public void GlobalSetup()
+    public virtual void GlobalSetup()
     {
+        particles = new(COUNT);
+        particleDict = new(COUNT);
+        quadtree = new(0, new Rect2(Vector2.Zero, backgroundSize));
         AddTeam1(TEAM_1);
         AddTeam2(TEAM_2);
+    }
+
+    [GlobalCleanup]
+    public virtual void GlobalCleanup()
+    {
+        particles.Clear();
+        particleDict.Clear();
+        quadtree.Clear();
+        //Query Frames: 2433, entity iterations: 26763000, avg per frame: 11000, quadtreeInserts: 2433000, destroyed: 0
+        //Class Frames: 16129, entity iterations: 177419000, avg per frame: 11000.001, quadtreeInserts: 16129000, destroyed: 0, collisions: 1950105
+        //Tread Frames: 57345, entity iterations: 0,         avg per frame: 0,         quadtreeInserts: 57345000, destroyed: 0, collisions: 13532776
+        Console.WriteLine($"Class Frames: {frame}, entity iterations: {entityIterations}, avg per frame: {(float) entityIterations / frame}, quadtreeInserts: {quadtreeInserts}, destroyed: {destroyed}, collisions: {collisionEvents}");
     }
 
     public void AddTeam1(int count)
@@ -110,18 +149,24 @@ public class PhysicsClassBenchmark
 
     [BenchmarkCategory("PhysicsFrame")]
     [Benchmark(Description = "Class Frame")]
-    public void PhysicsClassFrame()
+    public virtual void PhysicsFrame()
     {
+        frame++;
+
         quadtree.Clear();
         for (int i = 0; i < particles.Count; i++)
         {
             var p = particles[i];
             if (p.CollisionLayer != 0)
+            {
                 quadtree.Insert(new(p.Id, p.Position), p.Position);
+                quadtreeInserts++;
+            }
         }
 
         for (int i = 0; i < particles.Count; i++)
         {
+            entityIterations++;
             var p = particles[i];
             if (p.Alive == false) continue;
             // Physics
@@ -140,6 +185,7 @@ public class PhysicsClassBenchmark
             // Remove dead particles
             if (!p.Alive)
             {
+                destroyed++;
                 // remove from data (stop iterating it)
                 particles.RemoveAt(i);
                 particleDict.Remove(p.Id);
@@ -186,6 +232,7 @@ public class PhysicsClassBenchmark
         float particleRadiusSum = p1.Size; // + p2.Size;
         if (distSquared < particleRadiusSum * particleRadiusSum)
         {
+            collisionEvents++;
             //p1.OnCollision(p1, p2, deltaPos, distSquared, true);
             //p2.OnCollision(p2, p1, deltaPos, distSquared, false);
 
