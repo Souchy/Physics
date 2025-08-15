@@ -1,11 +1,13 @@
 using Arch.Core;
 using Arch.Core.Extensions;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace Test.Arch;
 
 public class ArchComponentTest
 {
+
     [Fact]
     public void TestRef()
     {

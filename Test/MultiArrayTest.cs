@@ -107,14 +107,14 @@ public class MultiArrayList<T>
         {
             if (Arrays.TryGetValue(prop.PropertyType, out var array))
             {
-                ((Array)array)[Size] = prop.GetValue(item);
+                //((Array)array)[Size] = prop.GetValue(item);
             }
         }
         foreach (var field in Typeof.GetFields(BindingFlags.Public | BindingFlags.Instance))
         {
             if (Arrays.TryGetValue(field.FieldType, out var array))
             {
-                ((Array)array)[Size] = field.GetValue(item);
+                //((Array)array)[Size] = field.GetValue(item);
             }
         }
         Size++;

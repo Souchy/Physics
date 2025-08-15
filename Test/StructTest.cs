@@ -9,12 +9,21 @@ using System.Threading.Tasks;
 namespace Test;
 
 
+// Record class cannot get updated at all
+public class ParticleClass(Vector2 Position, Vector2 Velocity, Color Color)
+{
+    public Vector2 Position = Position;
+    public Vector2 Velocity = Velocity;
+    public Color Color = Color;
+}
+// Struct is ok if reassigned
 public struct ParticleStruct(Vector2 Position, Vector2 Velocity, Color Color)
 {
     public Vector2 Position = Position;
     public Vector2 Velocity = Velocity;
     public Color Color = Color;
 }
+// Record struct is ok if reassigned
 public record struct ParticleRecordStruct(Vector2 Position, Vector2 Velocity, Color Color);
 
 public class StructTest
@@ -97,5 +106,6 @@ public class StructTest
         }
         Assert.All(particles, p => Assert.Equal(new(1, 1), p.Position));
     }
+
 
 }

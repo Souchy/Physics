@@ -1,4 +1,6 @@
+using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Running;
+using Benchmarks.Physics;
 using Benchmarks.Quadtree;
 using Benchmarks.System;
 
@@ -8,7 +10,17 @@ internal class Program
 {
     static void Main(string[] args)
     {
-        //var summary = BenchmarkRunner.Run<QuadtreeBenchmark>();
-        var summary2 = BenchmarkRunner.Run<SystemBenchmark>();
+        //BenchmarkRunner.Run<QuadtreeBenchmark>();
+
+        //BenchmarkRunner.Run<SystemBenchmark>();
+
+        var config = ManualConfig.Create(DefaultConfig.Instance)
+          .WithOptions(ConfigOptions.JoinSummary | ConfigOptions.DisableLogFile | ConfigOptions.StopOnFirstError);
+
+        BenchmarkRunner.Run([
+            BenchmarkConverter.TypeToBenchmarks( typeof(PhysicsClassBenchmark), config),
+            BenchmarkConverter.TypeToBenchmarks( typeof(PhysicsEcsQueryBenchmark), config),
+            BenchmarkConverter.TypeToBenchmarks( typeof(PhysicsEcsLowLevelBenchmark), config)
+            ]);
     }
 }
