@@ -7,36 +7,22 @@ using Physics.Mains.v5_Arch;
 namespace Benchmarks.Physics;
 
 [MemoryDiagnoser]
-public class PhysicsEcsQueryBenchmark
+public class PhysicsEcsQueryBenchmark : PhysicsParameters
 {
-    public const int TEAM_1 = PhysicsClassBenchmark.TEAM_1;
-    public const int TEAM_2 = PhysicsClassBenchmark.TEAM_2;
-    public const int COUNT = TEAM_1 + TEAM_2;
-    public static readonly Vector2 backgroundSize = PhysicsClassBenchmark.backgroundSize;
-    public const float delta = PhysicsClassBenchmark.delta; // Simulating a frame time of 1/60 seconds
-    public const double CollisionImmunityTimer = PhysicsClassBenchmark.CollisionImmunityTimer; // seconds
 
-    //public IntId ids = new();
-    public EntityQuadtree quadtree = new(0, new Rect2(Vector2.Zero, backgroundSize));
+    public EntityQuadtree quadtree;
     public World world;
     public QueryDescription destroyQuery = new QueryDescription().WithAll<Alive, Life>();
     public QueryDescription quadtreeQuery = new QueryDescription().WithAll<Position, CollisionLayer>();
     public QueryDescription physicsQuery = new QueryDescription().WithAll<Alive, Position, Velocity, CollisionImmunityTime, Modulate>();
-    //public QueryDescription aliveQuery = new QueryDescription().WithAll<Alive>();
-    //public QueryDescription renderQuery = new QueryDescription().WithAll<Position, Modulate>();
     public Random rnd = new();
-
-    bool logged = false;
-    int frame = 0;
-    int entityIterations = 0;
-    int quadtreeInserts = 0;
-    int destroyed = 0;
 
     [GlobalSetup]
     public virtual void GlobalSetup()
     {
         Console.WriteLine("Starting PhysicsEcsQueryBenchmark...");
         world = World.Create();
+        quadtree = new(0, new Rect2(Vector2.Zero, backgroundSize));
         AddTeam1(TEAM_1);
         AddTeam2(TEAM_2);
     }

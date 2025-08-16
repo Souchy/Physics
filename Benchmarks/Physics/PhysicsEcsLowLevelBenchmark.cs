@@ -11,17 +11,13 @@ namespace Benchmarks.Physics;
 [MemoryDiagnoser]
 public class PhysicsEcsLowLevelBenchmark : PhysicsEcsQueryBenchmark
 {
-    bool logged = false;
-    int frame = 0;
-    int entityIterations = 0;
-    int quadtreeInserts = 0;
-    int destroyed = 0;
 
     //[GlobalSetup]
     public override void GlobalSetup()
     {
         Console.WriteLine("Starting PhysicsEcsLowLevelBenchmark...");
         world = World.Create();
+        quadtree = new(0, new Rect2(Vector2.Zero, backgroundSize));
         AddTeam1(TEAM_1);
         AddTeam2(TEAM_2);
     }
