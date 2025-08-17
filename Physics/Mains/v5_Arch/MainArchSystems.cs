@@ -5,7 +5,8 @@ using Godot.Sharp.Extras;
 using Physics.Mains.v1;
 using Physics.Mains.v3_Multimesh;
 using Physics.Mains.v5_Arch;
-using Physics.Utils;
+using PhysicsLib.Godot;
+using PhysicsLib.Util;
 using System;
 using System.Collections.Generic;
 

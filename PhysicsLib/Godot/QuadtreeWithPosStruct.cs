@@ -1,6 +1,6 @@
 using Godot;
 
-namespace Physics.Utils;
+namespace PhysicsLib.Godot;
 
 public interface IHasPosition
 {
@@ -14,7 +14,7 @@ public class QuadtreeWithPosStruct<T> : Quadtree<T> where T : struct, IHasPositi
 
     protected override void Reinsert(T dataItem, Vector2 inserterPos)
     {
-        this.Insert(dataItem, dataItem.Position);
+        Insert(dataItem, dataItem.Position);
     }
 
     public override Quadtree<T> CreateThis(int depth, Rect2 bounds)

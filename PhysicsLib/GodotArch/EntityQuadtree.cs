@@ -1,7 +1,7 @@
 using Arch.Core;
 using Arch.Core.Extensions;
 using Godot;
-using Physics.Utils;
+using PhysicsLib.Godot;
 
 namespace Physics.Mains.v5_Arch;
 

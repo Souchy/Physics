@@ -17,10 +17,15 @@ internal class Program
           .WithOptions(ConfigOptions.JoinSummary | ConfigOptions.StopOnFirstError);
 
         BenchmarkRunner.Run([
-            BenchmarkConverter.TypeToBenchmarks( typeof(PhysicsClassBenchmark), config),
-            BenchmarkConverter.TypeToBenchmarks( typeof(PhysicsClassThreadBenchmark), config),
-            BenchmarkConverter.TypeToBenchmarks( typeof(PhysicsEcsQueryBenchmark), config),
-            BenchmarkConverter.TypeToBenchmarks( typeof(PhysicsEcsLowLevelBenchmark), config)
+            //BenchmarkConverter.TypeToBenchmarks( typeof(PhysicsClassBenchmark), config),
+            //BenchmarkConverter.TypeToBenchmarks( typeof(PhysicsClassThreadBenchmark), config),
+            //BenchmarkConverter.TypeToBenchmarks( typeof(PhysicsEcsQueryBenchmark), config),
+            //BenchmarkConverter.TypeToBenchmarks( typeof(PhysicsEcsLowLevelBenchmark), config),
+            //BenchmarkConverter.TypeToBenchmarks( typeof(PhysicsEcsSystemBenchmark), config),
+
+
+            BenchmarkConverter.TypeToBenchmarks( typeof(SystemBenchmark), config),
+            BenchmarkConverter.TypeToBenchmarks( typeof(EcsBenchmark), config),
             ]);
     }
 }

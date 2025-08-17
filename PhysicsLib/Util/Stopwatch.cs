@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Physics.Utils;
+namespace PhysicsLib.Util;
 
 public class Stopwatch
 {

@@ -134,12 +134,16 @@ public class PhysicsEcsQueryBenchmark : PhysicsParameters
 
     public virtual void DetectCollisions(Entity p1)
     {
-        var (detectionMask1, collisionImmunity1) = p1.Get<DetectionMask, CollisionImmunityTime>();
+        //var (detectionMask1, collisionImmunity1) = p1.Get<DetectionMask, CollisionImmunityTime>();
+        var detectionMask1 = p1.Get<DetectionMask>();
+        var collisionImmunity1 = p1.Get<CollisionImmunityTime>();
 
         if (detectionMask1.Value == 0) return; // Skip if no detection mask
         if (collisionImmunity1.Value > 0) return; // Skip if immune to collisions
 
-        var (position1, size1) = p1.Get<Position, Size>();
+        //var (position1, size1) = p1.Get<Position, Size>();
+        var position1 = p1.Get<Position>();
+        var size1 = p1.Get<Size>();
         var nodes = quadtree.QueryNodes(position1.Value, size1.Value, []);
         foreach (var node in nodes)
         {

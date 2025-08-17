@@ -1,6 +1,6 @@
 using BenchmarkDotNet.Attributes;
 using Godot;
-using Physics.Utils;
+using PhysicsLib.Godot;
 
 namespace Benchmarks.Quadtree;
 

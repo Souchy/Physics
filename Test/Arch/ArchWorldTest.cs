@@ -11,18 +11,25 @@ namespace Test.Arch;
 
 public class ArchWorldTest
 {
-    private static readonly Position v1 = new Position(Vector2.One);
-    private static readonly Position v2 = new Position(Vector2.One * 2);
+    private static readonly Position v1 = new(Vector2.One);
+    private static readonly Position v2 = new(Vector2.One * 2);
 
     [Fact]
-    public void SafeWorldReset()
+    public void NothingToDo()
     {
         // World 1
         var world1 = World.Create();
         var entt1 = world1.Create(v1);
+        world1.Destroy(entt1);
         world1.Dispose();
 
-        Assert.True(true);
+        // World 2
+        var world2 = World.Create();
+        var entt2 = world2.Create(v2);
+
+        Assert.Equal(entt1, entt2);
+        Assert.True(entt1.IsAlive());
+        Assert.Equal(entt1.Get<Position>().Value, entt2.Get<Position>().Value);
     }
 
     [Fact]
@@ -75,7 +82,7 @@ public class ArchWorldTest
         Assert.Null(World.Worlds[entt1.WorldId]);
 
         // World 2
-        var world2 = World.Create(); // New world, old one is lost.
+        var world2 = World.Create();
 
         // Entity can query the world, but is not inside it
         Assert.False(entt1.IsAlive());
@@ -109,6 +116,11 @@ public class ArchWorldTest
     }
 
 
+    /// <summary>
+    /// Entt1 destroy
+    /// Entt2 has new version
+    /// Entt1 stays dead, but gets entt2 values
+    /// </summary>
     [Fact]
     public void EntityShouldDieWhenDestroyed()
     {

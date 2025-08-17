@@ -1,106 +1,39 @@
-using Arch.Core;
 using BenchmarkDotNet.Attributes;
 using Godot;
-using Physics.Mains.v5_Arch;
-using System.Runtime.CompilerServices;
+using System;
+using System.Collections.Generic;
+using System.Text;
 
 namespace Benchmarks.System;
 
-[MemoryDiagnoser]
-public class SystemBenchmark
+internal class ParticleClass(Vector2 Position, Vector2 Velocity, Color Color)
 {
-    private class ParticleClass(Vector2 Position, Vector2 Velocity, Color Color)
-    {
-        public Vector2 Position { get; set; } = Position;
-        public Vector2 Velocity { get; set; } = Velocity;
-        public Color Color { get; set; } = Color;
-    }
-    private record struct ParticleStruct(Vector2 Position, Vector2 Velocity, Color Color);
+    public Vector2 Position { get; set; } = Position;
+    public Vector2 Velocity { get; set; } = Velocity;
+    public Color Color { get; set; } = Color;
+}
+internal record struct ParticleStruct(Vector2 Position, Vector2 Velocity, Color Color);
+
+public class SystemBenchmarkParams
+{
+    [Params(1_000_000)]
+    public int COUNT { get; set; }
+
+    public Random rng = new();
+    public float delta = 1f / 60f;
+}
 
 
-    private Random rng = new();
-    private const int COUNT = 1_000_000;
-
-    [GlobalSetup]
-    public void Setup()
-    {
-    }
-
-    #region ForeachParticleEntityLowLevel
-    private World worldLowLevel = World.Create();
-    [IterationSetup(Target = nameof(ForeachParticleEntityLowLevel))]
-    public void ForeachParticleEntityLowLevelSetup()
-    {
-        for (int i = 0; i < COUNT; i++)
-            worldLowLevel.Create(new Position(), new Velocity(new(rng.NextSingle(), rng.NextSingle())), new Color(1, 1, 1));
-    }
-    [Benchmark]
-    public void ForeachParticleEntityLowLevel()
-    {
-        var queryDestroy = worldLowLevel.Query(in query);
-        foreach (ref var chunk in queryDestroy.GetChunkIterator())
-        {
-            var references = chunk.GetFirst<Position, Velocity, Color>();
-            foreach (var entity in chunk)
-            {
-                ref var position = ref Unsafe.Add(ref references.t0, entity);
-                ref var velocity = ref Unsafe.Add(ref references.t1, entity);
-                ref var color = ref Unsafe.Add(ref references.t2, entity);
-
-                position.Value += velocity.Value;
-                color = new Color(rng.NextSingle(), rng.NextSingle(), rng.NextSingle());
-            }
-        }
-    }
-    [IterationCleanup(Target = nameof(ForeachParticleEntityLowLevel))]
-    public void ForeachParticleEntityLowLevelCleanup()
-    {
-        worldLowLevel.Query(query, (Entity entt) =>
-        {
-            worldLowLevel.Destroy(entt);
-        });
-        worldLowLevel.Dispose();
-        worldLowLevel = World.Create();
-    }
-    #endregion
-
-    #region ForeachParticleEntity
-    private World worldBasic = World.Create();
-    public QueryDescription query = new QueryDescription().WithAll<Position, Velocity, Color>();
-    public QueryDescription destroyQuery = new QueryDescription().WithAll<Alive>();
-    [IterationSetup(Target = nameof(ForeachParticleEntity))]
-    public void ForeachParticleEntitySetup()
-    {
-        for (int i = 0; i < COUNT; i++)
-            worldBasic.Create(new Position(), new Velocity(new(rng.NextSingle(), rng.NextSingle())), new Color(1, 1, 1));
-    }
-    [Benchmark]
-    public void ForeachParticleEntity()
-    {
-        worldBasic.Query(query, (ref Position position, ref Velocity velocity, ref Color color) =>
-        {
-            position.Value += velocity.Value;
-            color = new Color(rng.NextSingle(), rng.NextSingle(), rng.NextSingle());
-        });
-    }
-    [IterationCleanup(Target = nameof(ForeachParticleEntity))]
-    public void ForeachParticleEntityCleanup()
-    {
-        worldBasic.Query(query, (Entity entt) =>
-        {
-            worldBasic.Destroy(entt);
-        });
-        worldBasic.Dispose();
-        worldBasic = World.Create();
-    }
-    #endregion
-
+[MemoryDiagnoser]
+public class SystemBenchmark : SystemBenchmarkParams
+{
 
     #region ForeachParticleClass
-    private List<ParticleClass> particlesClass = new();
-    [IterationSetup(Target = nameof(ForeachParticleClass))]
+    private List<ParticleClass> particlesClass;
+    [GlobalSetup(Target = nameof(ForeachParticleClass))]
     public void ForeachParticleClassSetup()
     {
+        particlesClass = new(COUNT);
         for (int i = 0; i < COUNT; i++)
             particlesClass.Add(new ParticleClass(Vector2.Zero, new(rng.NextSingle(), rng.NextSingle()), new(1, 1, 1)));
     }
@@ -114,7 +47,7 @@ public class SystemBenchmark
             particle.Color = new Color(rng.NextSingle(), rng.NextSingle(), rng.NextSingle());
         }
     }
-    [IterationCleanup(Target = nameof(ForeachParticleClass))]
+    [GlobalCleanup(Target = nameof(ForeachParticleClass))]
     public void ForeachParticleClassCleanup()
     {
         particlesClass.Clear();
@@ -123,10 +56,11 @@ public class SystemBenchmark
 
 
     #region ForeachParticleStruct
-    private List<ParticleStruct> particlesStruct = new();
-    [IterationSetup(Target = nameof(ForeachParticleStruct))]
+    private List<ParticleStruct> particlesStruct;
+    [GlobalSetup(Target = nameof(ForeachParticleStruct))]
     public void ForeachParticleStructSetup()
     {
+        particlesStruct = new(COUNT);
         for (int i = 0; i < COUNT; i++)
             particlesStruct.Add(new ParticleStruct(Vector2.Zero, new(rng.NextSingle(), rng.NextSingle()), new(1, 1, 1)));
     }
@@ -141,7 +75,7 @@ public class SystemBenchmark
             particlesStruct[i] = particle; // Reassign to update the list
         }
     }
-    [IterationCleanup(Target = nameof(ForeachParticleStruct))]
+    [GlobalCleanup(Target = nameof(ForeachParticleStruct))]
     public void ForeachParticleStructCleanup()
     {
         particlesStruct.Clear();
@@ -150,12 +84,15 @@ public class SystemBenchmark
 
 
     #region ForeachParticleList
-    private List<Vector2> particlesListPosition = new();
-    private List<Vector2> particlesListVelocity = new();
-    private List<Color> particlesListColor = new();
-    [IterationSetup(Target = nameof(ForeachParticleList))]
+    private List<Vector2> particlesListPosition;
+    private List<Vector2> particlesListVelocity;
+    private List<Color> particlesListColor;
+    [GlobalSetup(Target = nameof(ForeachParticleList))]
     public void ForeachParticleListSetup()
     {
+        particlesListPosition = new(COUNT);
+        particlesListVelocity = new(COUNT);
+        particlesListColor = new(COUNT);
         for (int i = 0; i < COUNT; i++)
         {
             particlesListPosition.Add(Vector2.Zero);
@@ -172,7 +109,7 @@ public class SystemBenchmark
             particlesListColor[i] = new Color(rng.NextSingle(), rng.NextSingle(), rng.NextSingle());
         }
     }
-    [IterationCleanup(Target = nameof(ForeachParticleList))]
+    [GlobalCleanup(Target = nameof(ForeachParticleList))]
     public void ForeachParticleListCleanup()
     {
         particlesListPosition.Clear();
@@ -182,12 +119,15 @@ public class SystemBenchmark
     #endregion
 
     #region ForeachParticleArray
-    private Vector2[] particlesArrayPosition = new Vector2[COUNT];
-    private Vector2[] particlesArrayVelocity = new Vector2[COUNT];
-    private Color[] particlesArrayColor = new Color[COUNT];
-    [IterationSetup(Targets = [nameof(ForeachParticleArrayCombinedLoops), nameof(ForeachParticleArraySeparateLoops)])]
+    private Vector2[] particlesArrayPosition;
+    private Vector2[] particlesArrayVelocity;
+    private Color[] particlesArrayColor;
+    [GlobalSetup(Targets = [nameof(ForeachParticleArrayCombinedLoops), nameof(ForeachParticleArraySeparateLoops), nameof(ForeachParticleArrayCombinedThreadsLoops)])]
     public void ForeachParticleArraySetup()
     {
+        particlesArrayPosition = new Vector2[COUNT];
+        particlesArrayVelocity = new Vector2[COUNT];
+        particlesArrayColor = new Color[COUNT];
         for (int i = 0; i < COUNT; i++)
         {
             particlesArrayPosition[i] = Vector2.Zero;
@@ -205,6 +145,15 @@ public class SystemBenchmark
         }
     }
     [Benchmark]
+    public void ForeachParticleArrayCombinedThreadsLoops()
+    {
+        var result = Parallel.For(0, particlesArrayPosition.Length, i =>
+        {
+            particlesArrayPosition[i] += particlesArrayVelocity[i];
+            particlesArrayColor[i] = new Color(rng.NextSingle(), rng.NextSingle(), rng.NextSingle());
+        });
+    }
+    [Benchmark]
     public void ForeachParticleArraySeparateLoops()
     {
         for (int i = 0; i < particlesArrayPosition.Length; i++)
@@ -216,7 +165,7 @@ public class SystemBenchmark
             particlesArrayColor[i] = new Color(rng.NextSingle(), rng.NextSingle(), rng.NextSingle());
         }
     }
-    [IterationCleanup(Targets = [nameof(ForeachParticleArrayCombinedLoops), nameof(ForeachParticleArraySeparateLoops)])]
+    [GlobalCleanup(Targets = [nameof(ForeachParticleArrayCombinedLoops), nameof(ForeachParticleArraySeparateLoops), nameof(ForeachParticleArrayCombinedThreadsLoops)])]
     public void ForeachParticleArrayCleanup()
     {
         particlesArrayPosition = new Vector2[COUNT];
@@ -224,5 +173,4 @@ public class SystemBenchmark
         particlesArrayColor = new Color[COUNT];
     }
     #endregion
-
 }

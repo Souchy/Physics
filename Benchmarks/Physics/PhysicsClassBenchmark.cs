@@ -2,9 +2,8 @@ using Arch.Core;
 using BenchmarkDotNet.Attributes;
 using Godot;
 using Microsoft.Diagnostics.Tracing.StackSources;
-using Physics.Utils;
-using System.Runtime.Intrinsics.X86;
-using static Godot.WebSocketPeer;
+using PhysicsLib.Godot;
+using PhysicsLib.Util;
 
 namespace Benchmarks.Physics;
 
@@ -66,14 +65,14 @@ so threadable because A affects B, but B does not affect A.
 
 public class PhysicsParameters : PhysicsLogs
 {
-    [Params(10_000, 50_000, 100_000)]
+    [Params(10_000, 50_000)]
     public int TEAM_1 { get; set; }
-    [Params(1_000, 5_000, 10_000, 50_000, 100_000)]
+    [Params(1_000, 5_000, 10_000, 50_000)]
     public int TEAM_2 { get; set; }
     public int COUNT => TEAM_1 + TEAM_2;
     public readonly Vector2 backgroundSize = new Vector2(1280, 720);
-    public const float delta = 1f / 60f; // Simulating a frame time of 1/60 seconds
-    public const double CollisionImmunityTimer = 0.1; // seconds
+    public static float delta = 1f / 60f; // Simulating a frame time of 1/60 seconds
+    public static double CollisionImmunityTimer = 0.1; // seconds
 }
 
 public class PhysicsLogs

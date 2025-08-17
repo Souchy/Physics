@@ -1,6 +1,7 @@
 using Godot;
 using Godot.Sharp.Extras;
-using Physics.Utils;
+using PhysicsLib.Godot;
+using PhysicsLib.Util;
 using System;
 using System.Collections.Generic;
 

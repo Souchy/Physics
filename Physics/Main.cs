@@ -11,8 +11,8 @@ namespace Physics;
 
 public partial class Main : Node2D
 {
-    public const int TEAM_1 = 15_000;
-    public const int TEAM_2 = 2_000;
+    public const int TEAM_1 = 4_000;
+    public const int TEAM_2 = 500;
 
     public static Main Instance { get; private set; } = null!;
 
@@ -26,6 +26,7 @@ public partial class Main : Node2D
     {
         this.OnReady();
         Instance = this;
+
         Camera2D.Position = Background.Size / 2f;
 
         //gameLoop = new Main1(this, Background.Size);

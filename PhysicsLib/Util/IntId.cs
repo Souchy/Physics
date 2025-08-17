@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
-
-namespace Physics.Utils;
+namespace PhysicsLib.Util;
 
 public class IntId
 {

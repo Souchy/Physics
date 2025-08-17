@@ -1,14 +1,14 @@
 using Arch.Core;
 using Arch.Core.Extensions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using Arch.System;
+using System.Drawing;
+
+//using Godot;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Test.Arch;
+
 public class ArchSystemsTest
 {
 
@@ -55,4 +55,45 @@ public class ArchSystemsTest
         Assert.Equal(Vector2.One, entt.Get<Position>().Value);
     }
 
+
+    [Fact]
+    public void Arch_System_ShouldWork()
+    {
+        // Arrange
+        var world = World.Create();
+        var moveSystem = new MoveSystem(world);
+        var group = new Group<float>(
+            "Moving",
+            moveSystem
+        );
+        group.Initialize();
+
+        var entt = world.Create(
+            new Position(Vector2.Zero),
+            new Velocity(Vector2.One)
+        );
+        // Act
+        float delta = 1f / 60f;
+        {
+            group.BeforeUpdate(in delta);
+            group.Update(in delta);
+            group.AfterUpdate(in delta);
+        }
+        // Assert
+        Assert.Equal(Vector2.One, entt.Get<Position>().Value);
+        Assert.Equal(1, moveSystem.counter);
+    }
+
+}
+
+public partial class MoveSystem(World world) : BaseSystem<World, float>(world)
+{
+    public int counter;
+    [Query]
+    [All(typeof(Position), typeof(Velocity))]
+    public void Move(ref Position position, ref Velocity velocity)
+    {
+        counter++;
+        position.Value += velocity.Value;
+    }
 }

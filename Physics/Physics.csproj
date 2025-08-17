@@ -1,11 +1,15 @@
-<Project Sdk="Godot.NET.Sdk/4.5.0-dev.1">
+<Project Sdk="Godot.NET.Sdk/4.5.0-dev.5">
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Arch" Version="2.1.0" />
     <PackageReference Include="GodotSharpExtras" Version="0.5.0" />
-    <PackageReference Include="Souchy.Net" Version="1.0.9" />
+    <PackageReference Include="Souchy.Arch" Version="1.0.0" />
+    <PackageReference Include="Souchy.Net" Version="1.0.10" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PhysicsLib\PhysicsLib.csproj" />
   </ItemGroup>
 </Project>

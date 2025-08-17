@@ -1,13 +1,7 @@
 using Godot;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
-namespace Physics.Utils;
+namespace PhysicsLib.Godot;
 
 public static class RectExtensions
 {
@@ -92,7 +86,7 @@ public class Quadtree<T>
 
     public virtual Quadtree<T> CreateThis(int depth, Rect2 bounds)
     {
-        return new Quadtree<T>(Depth, Bounds);
+        return new Quadtree<T>(depth, Bounds);
     }
 
     public virtual void Clear()
@@ -169,7 +163,7 @@ public class Quadtree<T>
 
     protected virtual void Reinsert(T dataItem, Vector2 inserterPos)
     {
-        this.Insert(dataItem, inserterPos);
+        Insert(dataItem, inserterPos);
     }
 
     /// <summary>
