@@ -106,5 +106,10 @@ public class MultimeshSpawner
         UpdateInstance(CurrentIndex, position, velocity, color);
         CurrentIndex++;
     }
+    public void UpdateInstance(Vector2 position, Vector2 velocity, Color color, Color customData)
+    {
+        UpdateInstance(CurrentIndex, position, velocity, color, customData);
+        CurrentIndex++;
+    }
 
 }

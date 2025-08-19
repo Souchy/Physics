@@ -11,6 +11,14 @@
 		- Entity resource pooling
 		- Entity navigation (navigate to target, avoid entities, avoid walls, avoid holes...)
 
+	Other:
+		- Terrain Grid (allows .isOnFloor, flow field and boid-like avoidance)
+		- Flow field
+		- Multimesh with sprite sheet animation (texture param has path + stepcount + animation duration, entity's state has time)
+		- Multimesh with hurt animation (maybe only variable is time, manage color/anim with a curve?)
+		- 
+
+
 # TO TEST
 	Render:
 		- Godot Sprite2D nodes (one pool per texture)
@@ -21,7 +29,6 @@
 		- Godot physics nodes: Area, CollisionShape
 		- Godot physics server: Area + multiple CollisionShape
 		- Custom physics
-
 			Spatial partitioning data structure:
 				Data structure:
 					- Quadtree

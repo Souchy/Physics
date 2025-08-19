@@ -1,7 +1,93 @@
-[gd_scene load_steps=3 format=3 uid="uid://cpioxx47ur0rh"]
+[gd_scene load_steps=5 format=3 uid="uid://cpioxx47ur0rh"]
 
 [ext_resource type="Script" uid="uid://cgafvhbs5x2oy" path="res://Main.cs" id="1_glv2v"]
 [ext_resource type="PackedScene" uid="uid://s2qcxp5drdoc" path="res://DebugUi.tscn" id="2_uu6xs"]
+
+[sub_resource type="Shader" id="Shader_uu6xs"]
+code = "shader_type canvas_item;
+render_mode blend_mix;
+
+uniform vec2 Steps;
+uniform vec2 StepsAnimationRange;
+uniform float AnimationDuration;
+uniform vec2 StepsAnimationStart;
+
+
+
+void vertex() {
+// Input:5
+	vec2 n_out5p0 = UV;
+
+
+// Vector2Parameter:9
+	vec2 n_out9p0 = Steps;
+
+
+// VectorOp:13
+	vec2 n_in13p0 = vec2(1.00000, 1.00000);
+	vec2 n_out13p0 = n_in13p0 / n_out9p0;
+
+
+// UVFunc:6
+	vec2 n_in6p2 = vec2(0.00000, 0.00000);
+	vec2 n_out6p0 = (n_out5p0 - n_in6p2) * n_out13p0 + n_in6p2;
+
+
+// Vector2Parameter:29
+	vec2 n_out29p0 = StepsAnimationRange;
+
+
+// Input:15
+	vec4 n_out15p0 = INSTANCE_CUSTOM;
+	float n_out15p1 = n_out15p0.r;
+
+
+// FloatParameter:22
+	float n_out22p0 = AnimationDuration;
+
+
+// FloatOp:32
+	float n_out32p0 = mod(n_out15p1, n_out22p0);
+
+
+// FloatOp:23
+	float n_out23p0 = n_out32p0 / n_out22p0;
+
+
+// Vector2Parameter:28
+	vec2 n_out28p0 = StepsAnimationStart;
+
+
+// MultiplyAdd:25
+	vec2 n_out25p0 = fma(n_out29p0, vec2(n_out23p0), n_out28p0);
+
+
+// VectorFunc:27
+	vec2 n_out27p0 = floor(n_out25p0);
+
+
+// VectorOp:14
+	vec2 n_out14p0 = n_out13p0 * n_out27p0;
+
+
+// UVFunc:4
+	vec2 n_in4p1 = vec2(1.00000, 1.00000);
+	vec2 n_out4p0 = n_out14p0 * n_in4p1 + n_out6p0;
+
+
+// Output:0
+	UV = n_out4p0;
+
+
+}
+"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_r0du0"]
+shader = SubResource("Shader_uu6xs")
+shader_parameter/Steps = Vector2(0, 0)
+shader_parameter/StepsAnimationRange = Vector2(0, 0)
+shader_parameter/AnimationDuration = 0.0
+shader_parameter/StepsAnimationStart = Vector2(0, 0)
 
 [node name="Node2D" type="Node2D"]
 script = ExtResource("1_glv2v")
@@ -23,6 +109,9 @@ unique_name_in_owner = true
 [node name="Camera2D" type="Camera2D" parent="World"]
 unique_name_in_owner = true
 position = Vector2(640, 360)
+
+[node name="MultiMeshInstance2D" type="MultiMeshInstance2D" parent="World"]
+material = SubResource("ShaderMaterial_r0du0")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 
