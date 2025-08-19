@@ -12,8 +12,8 @@ namespace Physics;
 
 public partial class Main : Node2D
 {
-    public const int TEAM_1 = 4_000;
-    public const int TEAM_2 = 500;
+    public const int TEAM_1 = 15_000;
+    public const int TEAM_2 = 2_000;
 
     public static Main Instance { get; private set; } = null!;
 
@@ -35,8 +35,8 @@ public partial class Main : Node2D
         //gameLoop = new MainMultimesh(this, Background.Size);
         //gameLoop = new MainMultimeshThreads(this, Background.Size);
         //gameLoop = new MainArch(this, Background.Size);
-        gameLoop = new MainArchSystems(this, Background.Size);
-        //gameLoop = new MainGame(this, Background.Size);
+        //gameLoop = new MainArchSystems(this, Background.Size);
+        gameLoop = new MainGame(this, Background.Size);
 
         //gameLoop = new MainPhysicsServer(this, Background.Size);
         gameLoop.OnReady();

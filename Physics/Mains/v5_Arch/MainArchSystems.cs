@@ -20,6 +20,7 @@ public class MainArchSystems(Node mainNode, Vector2 backgroundSize) : IGameLoop 
     public const float newSize = 32;
     public const float spriteSize = 32;
     public const double CollisionImmunityTimer = 0.2;
+    public const bool threadedInsert = true;
 
     #region Nodes
     public Node2D SpritesPool { get; set; } = null!;
@@ -62,44 +63,45 @@ public class MainArchSystems(Node mainNode, Vector2 backgroundSize) : IGameLoop 
 
     public void Start()
     {
-        Scheduler.RunTimed(16, (delta) =>
-        {
-            var bounds = new Rect2(Vector2.Zero, backgroundSize);
-            quadtreeThread = new EntityQuadtree(0, bounds);
+        if (threadedInsert)
+            Scheduler.RunTimed(16, (delta) =>
+            {
+                var bounds = new Rect2(Vector2.Zero, backgroundSize);
+                quadtreeThread = new EntityQuadtree(0, bounds);
 
-            List<Entity> copy = null;
-            if (quadtreeEntitiesSwap != null)
-            {
-                // Swap quadtree references
-                //quadtree.Clear();
-                copy = quadtreeEntitiesSwap;
-                //quadtreeSwap.Clear();
-                quadtreeEntitiesSwap = null;
-            }
-            if(copy == null) return;
-            //List<Entity> copy; //;
-            //lock (quadtreeEntitiesSwap)
-            //{
-            //    copy = new(quadtreeEntitiesSwap);
-            //}
-            // Update quadtree(s)
-            foreach (var p in copy)
-            {
-                if (p.IsAlive() && p.Get<CollisionLayer>().Value != 0)
+                List<Entity> copy = null;
+                if (quadtreeEntitiesSwap != null)
                 {
-                    var pos = p.Get<Position>().Value;
-                    quadtreeThread.Insert(p, pos);
+                    // Swap quadtree references
+                    //quadtree.Clear();
+                    copy = quadtreeEntitiesSwap;
+                    //quadtreeSwap.Clear();
+                    quadtreeEntitiesSwap = null;
                 }
-            }
-            quadtreeSwap = quadtreeThread;
-            //world.Query(quadtreeQuery, (Entity entt, ref Position position, ref CollisionLayer collisionLayer) =>
-            //{
-            //    if (collisionLayer.Value != 0)
-            //    {
-            //        quadtree.Insert(entt, position.Value);
-            //    }
-            //});
-        });
+                if (copy == null) return;
+                //List<Entity> copy; //;
+                //lock (quadtreeEntitiesSwap)
+                //{
+                //    copy = new(quadtreeEntitiesSwap);
+                //}
+                // Update quadtree(s)
+                foreach (var p in copy)
+                {
+                    if (p.IsAlive() && p.Get<CollisionLayer>().Value != 0)
+                    {
+                        var pos = p.Get<Position>().Value;
+                        quadtreeThread.Insert(p, pos);
+                    }
+                }
+                quadtreeSwap = quadtreeThread;
+                //world.Query(quadtreeQuery, (Entity entt, ref Position position, ref CollisionLayer collisionLayer) =>
+                //{
+                //    if (collisionLayer.Value != 0)
+                //    {
+                //        quadtree.Insert(entt, position.Value);
+                //    }
+                //});
+            });
     }
 
     public void AddParticles(int count, int team, int detectionMask, int collisionLayer, Color color)
@@ -218,24 +220,31 @@ public class MainArchSystems(Node mainNode, Vector2 backgroundSize) : IGameLoop 
 
     public virtual void UpdateQuadtree(double delta)
     {
-        if (quadtreeSwap != null)
+        if (threadedInsert)
         {
-            // Swap quadtree references
-            //quadtree.Clear();
-            quadtree = quadtreeSwap;
-            //quadtreeSwap.Clear();
-            quadtreeSwap = null;
+
+            if (quadtreeSwap != null)
+            {
+                // Swap quadtree references
+                //quadtree.Clear();
+                quadtree = quadtreeSwap;
+                //quadtreeSwap.Clear();
+                quadtreeSwap = null;
+            }
+        }
+        else
+        {
+            // Update quadtree
+            quadtree.Clear();
+            world.Query(quadtreeQuery, (Entity entt, ref Position position, ref CollisionLayer collisionLayer) =>
+            {
+                if (collisionLayer.Value != 0)
+                {
+                    quadtree.Insert(entt, position.Value);
+                }
+            });
         }
 
-        // Update quadtree
-        //quadtree.Clear();
-        //world.Query(quadtreeQuery, (Entity entt, ref Position position, ref CollisionLayer collisionLayer) =>
-        //{
-        //    if (collisionLayer.Value != 0)
-        //    {
-        //        quadtree.Insert(entt, position.Value);
-        //    }
-        //});
     }
 
     public virtual void UpdatePhysics(double delta)
@@ -264,7 +273,7 @@ public class MainArchSystems(Node mainNode, Vector2 backgroundSize) : IGameLoop 
 
         //lock (quadtreeEntitiesSwap)
         //{
-            quadtreeEntitiesSwap = quadtreeEntities;
+        quadtreeEntitiesSwap = quadtreeEntities;
         //}
 
     }

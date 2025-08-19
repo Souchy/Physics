@@ -1,5 +1,7 @@
+using Arch.Core;
 using Godot;
 using Physics.Mains.v3_Multimesh;
+using Physics.Mains.v5_Arch;
 using PhysicsLib.Godot;
 using PhysicsLib.Util;
 using System;
@@ -17,15 +19,26 @@ public record struct CollisionShape(float Radius, int CollisionLayer, int Collis
 public record struct TextureParam(string Path, Vector2 StepsCount);
 public record struct Collision(int Id1, int Id2, Vector2 Normal);
 
-public record struct ValueAnimation<T>(T Current, T Target, float Duration, float Elapsed)
+public record struct ValueAnimation<T>(T Current, T Target, float Duration, float Elapsed, bool pingPong)
 {
     public readonly bool IsFinished => Elapsed >= Duration;
     public ValueAnimation<T> Update(float delta)
     {
         if (IsFinished)
         {
-            Current = Target;
-            Elapsed = Duration; // Ensure Elapsed is set to Duration when finished
+            if (pingPong)
+            {
+                // Swap Current and Target for ping-pong effect
+                var temp = Current;
+                Current = Target;
+                Target = temp;
+                Elapsed = 0f; // Reset Elapsed for the next cycle
+            }
+            else
+            {
+                Current = Target;
+                Elapsed = Duration; // Ensure Elapsed is set to Duration when finished
+            }
         }
         else
         {
@@ -85,6 +98,7 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
     public const float newSize = 32;
     public const float spriteSize = 32;
     public const int CAPACITY = 10_000;
+    public const bool threadedInsert = true;
 
     public int ParticleCount => activeEntities.Count;
 
@@ -102,8 +116,10 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
     public Collision[] allCollisions;
 
 
-    public Dictionary<int, QuadtreeWithPosStruct<PositionId>> quadtrees;
     public Dictionary<string, MultimeshSpawner> spawners;
+    public Dictionary<int, QuadtreeWithPosStruct<PositionId>> quadtrees;
+    public Dictionary<int, QuadtreeWithPosStruct<PositionId>> quadtreesSwap;
+    public bool quadtreeReady = false;
 
     public void OnReady()
     {
@@ -122,17 +138,56 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
             [(int) (CollisionLayers.Player | CollisionLayers.Projectile)] = new(0, new Rect2(Vector2.Zero, backgroundSize)),
             [(int) (CollisionLayers.Enemy | CollisionLayers.Projectile)] = new(0, new Rect2(Vector2.Zero, backgroundSize)),
         };
+        quadtreesSwap = new(10)
+        {
+            [(int) CollisionLayers.Player] = new(0, new Rect2(Vector2.Zero, backgroundSize)),
+            [(int) CollisionLayers.Enemy] = new(0, new Rect2(Vector2.Zero, backgroundSize)),
+            [(int) (CollisionLayers.Player | CollisionLayers.Projectile)] = new(0, new Rect2(Vector2.Zero, backgroundSize)),
+            [(int) (CollisionLayers.Enemy | CollisionLayers.Projectile)] = new(0, new Rect2(Vector2.Zero, backgroundSize)),
+        };
+
         spawners = new(10);
-
         SpritesPool = mainNode.GetNode<Node2D>("%SpritesPool");
-
-        //var texture = GD.Load<Texture2D>("res://Assets/right-arrow.png");
-        //var spawner = new MultimeshSpawner(texture, new Vector2(newSize, newSize), MultimeshSpawnerFlags.Color);
-        //SpritesPool.AddChild(spawner.MultiMeshInstance);
     }
 
     public void Start()
     {
+
+        if (threadedInsert)
+            Scheduler.RunTimed(16, (delta) =>
+            {
+                if(quadtreeReady)
+                    return; 
+
+                foreach (var quadtree in quadtreesSwap.Values)
+                    quadtree.Clear();
+                //foreach (var key in quadtreesSwap.Keys)
+                //{
+                //    quadtreesSwap[key] = new(0, new Rect2(Vector2.Zero, backgroundSize));
+                //}
+
+                List<int> copy = null;
+                lock (activeEntities)
+                {
+                    copy = [.. activeEntities];
+                }
+                if (copy == null) return;
+
+                // Update quadtree(s)
+                foreach (var p in copy)
+                {
+                    int layer = collisionShapes[p].CollisionLayer;
+                    if (layer == 0)
+                        continue;
+                    if (entityLife.TryGetValue(p, out var lifeValue) && lifeValue <= 0)
+                        continue;
+                    var spatial = spatials[p];
+                    var positionid = new PositionId(p, spatial.Position);
+                    quadtreesSwap[layer].Insert(positionid);
+                }
+
+                quadtreeReady = true;
+            });
     }
 
 
@@ -141,7 +196,7 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
     {
         //allCollisions.Clear();
         //allCollisions = new Collision[ParticleCount];
-        allCollisions = new Collision[1000];
+        allCollisions = new Collision[allCollisions.Length];
         UpdateQuadtree();
         UpdatePhysics(delta);
         UpdateNodes(delta);
@@ -150,16 +205,28 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
 
     public void UpdateQuadtree()
     {
-        foreach (var quadtree in quadtrees.Values)
-            quadtree.Clear();
-        foreach (int id in activeEntities) //int i = 0; i < ParticleCount; i++)
+        if (threadedInsert)
         {
-            var shape = collisionShapes[id];
-            if (shape.CollisionLayer == 0)
-                continue;
-            var spatial = spatials[id];
-            var positionid = new PositionId(id, spatial.Position);
-            quadtrees[shape.CollisionLayer].Insert(positionid);
+            if (!quadtreeReady)
+                return;
+
+            // Swap quadtrees
+            (quadtreesSwap, quadtrees) = (quadtrees, quadtreesSwap);
+            quadtreeReady = false;
+        }
+        else
+        {
+            foreach (var quadtree in quadtrees.Values)
+                quadtree.Clear();
+            foreach (int id in activeEntities)
+            {
+                var shape = collisionShapes[id];
+                if (shape.CollisionLayer == 0)
+                    continue;
+                var spatial = spatials[id];
+                var positionid = new PositionId(id, spatial.Position);
+                quadtrees[shape.CollisionLayer].Insert(positionid);
+            }
         }
     }
 
