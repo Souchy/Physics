@@ -12,7 +12,7 @@ namespace Physics;
 
 public partial class Main : Node2D
 {
-    public const int TEAM_1 = 15_000;
+    public const int TEAM_1 = 8_000;
     public const int TEAM_2 = 2_000;
 
     public static Main Instance { get; private set; } = null!;

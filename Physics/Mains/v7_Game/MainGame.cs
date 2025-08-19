@@ -233,6 +233,7 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
     public void UpdatePhysics(double delta)
     {
         Parallel.For(0, activeEntities.Count, i =>
+        //for(int i = 0; i < activeEntities.Count; i++)
         {
             int id1 = activeEntities[i];
 
@@ -283,7 +284,6 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
                     }
                 }
             }
-            //}
         }
         );
     }
