@@ -1,0 +1,173 @@
+[gd_resource type="VisualShader" load_steps=17 format=3 uid="uid://mwj70kalv8i5"]
+
+[sub_resource type="VisualShaderNodeVectorOp" id="VisualShaderNodeVectorOp_uqf8c"]
+default_input_values = [0, Vector2(1, 1), 1, Vector2(0, 0)]
+op_type = 0
+operator = 3
+
+[sub_resource type="VisualShaderNodeVectorOp" id="VisualShaderNodeVectorOp_5mcgx"]
+default_input_values = [0, Vector2(0, 0), 1, Vector2(0, 0)]
+op_type = 0
+operator = 2
+
+[sub_resource type="VisualShaderNodeInput" id="VisualShaderNodeInput_r6bhc"]
+expanded_output_ports = [0]
+input_name = "instance_custom"
+
+[sub_resource type="VisualShaderNodeFloatParameter" id="VisualShaderNodeFloatParameter_r6bhc"]
+parameter_name = "AnimationDuration"
+
+[sub_resource type="VisualShaderNodeFloatOp" id="VisualShaderNodeFloatOp_r6bhc"]
+operator = 3
+
+[sub_resource type="VisualShaderNodeMultiplyAdd" id="VisualShaderNodeMultiplyAdd_jm644"]
+default_input_values = [0, Vector2(0, 0), 1, Vector2(1, 1), 2, Vector2(0, 0)]
+op_type = 1
+
+[sub_resource type="VisualShaderNodeVectorFunc" id="VisualShaderNodeVectorFunc_5mcgx"]
+default_input_values = [0, Vector2(0, 0)]
+op_type = 0
+function = 17
+
+[sub_resource type="VisualShaderNodeVec2Parameter" id="VisualShaderNodeVec2Parameter_r6bhc"]
+parameter_name = "StepsAnimationStart"
+
+[sub_resource type="VisualShaderNodeVec2Parameter" id="VisualShaderNodeVec2Parameter_jm644"]
+parameter_name = "StepsAnimationRange"
+
+[sub_resource type="VisualShaderNodeInput" id="VisualShaderNodeInput_jm644"]
+input_name = "time"
+
+[sub_resource type="VisualShaderNodeFloatOp" id="VisualShaderNodeFloatOp_jm644"]
+operator = 4
+
+[sub_resource type="VisualShaderNodeFloatOp" id="VisualShaderNodeFloatOp_uqf8c"]
+
+[sub_resource type="VisualShaderNodeUVFunc" id="VisualShaderNodeUVFunc_jm644"]
+
+[sub_resource type="VisualShaderNodeInput" id="VisualShaderNodeInput_uqf8c"]
+input_name = "uv"
+
+[sub_resource type="VisualShaderNodeUVFunc" id="VisualShaderNodeUVFunc_5mcgx"]
+default_input_values = [1, Vector2(0, 0), 2, Vector2(0, 0)]
+function = 1
+
+[sub_resource type="VisualShaderNodeVec2Parameter" id="VisualShaderNodeVec2Parameter_6yub5"]
+parameter_name = "Steps"
+
+[resource]
+code = "shader_type canvas_item;
+render_mode blend_mix;
+
+uniform vec2 Steps;
+uniform vec2 StepsAnimationRange;
+uniform float AnimationDuration;
+uniform vec2 StepsAnimationStart;
+
+
+
+void vertex() {
+// Input:5
+	vec2 n_out5p0 = UV;
+
+
+// Vector2Parameter:9
+	vec2 n_out9p0 = Steps;
+
+
+// VectorOp:13
+	vec2 n_in13p0 = vec2(1.00000, 1.00000);
+	vec2 n_out13p0 = n_in13p0 / n_out9p0;
+
+
+// UVFunc:6
+	vec2 n_in6p2 = vec2(0.00000, 0.00000);
+	vec2 n_out6p0 = (n_out5p0 - n_in6p2) * n_out13p0 + n_in6p2;
+
+
+// Vector2Parameter:29
+	vec2 n_out29p0 = StepsAnimationRange;
+
+
+// Input:15
+	vec4 n_out15p0 = INSTANCE_CUSTOM;
+	float n_out15p1 = n_out15p0.r;
+
+
+// FloatParameter:22
+	float n_out22p0 = AnimationDuration;
+
+
+// FloatOp:32
+	float n_out32p0 = mod(n_out15p1, n_out22p0);
+
+
+// FloatOp:23
+	float n_out23p0 = n_out32p0 / n_out22p0;
+
+
+// Vector2Parameter:28
+	vec2 n_out28p0 = StepsAnimationStart;
+
+
+// MultiplyAdd:25
+	vec2 n_out25p0 = fma(n_out29p0, vec2(n_out23p0), n_out28p0);
+
+
+// VectorFunc:27
+	vec2 n_out27p0 = floor(n_out25p0);
+
+
+// VectorOp:14
+	vec2 n_out14p0 = n_out13p0 * n_out27p0;
+
+
+// UVFunc:4
+	vec2 n_in4p1 = vec2(1.00000, 1.00000);
+	vec2 n_out4p0 = n_out14p0 * n_in4p1 + n_out6p0;
+
+
+// Output:0
+	UV = n_out4p0;
+
+
+}
+"
+graph_offset = Vector2(-626.328, 36.7374)
+mode = 1
+flags/light_only = false
+nodes/vertex/0/position = Vector2(900, 360)
+nodes/vertex/4/node = SubResource("VisualShaderNodeUVFunc_jm644")
+nodes/vertex/4/position = Vector2(540, 360)
+nodes/vertex/5/node = SubResource("VisualShaderNodeInput_uqf8c")
+nodes/vertex/5/position = Vector2(-360, 400)
+nodes/vertex/6/node = SubResource("VisualShaderNodeUVFunc_5mcgx")
+nodes/vertex/6/position = Vector2(-20, 360)
+nodes/vertex/9/node = SubResource("VisualShaderNodeVec2Parameter_6yub5")
+nodes/vertex/9/position = Vector2(-700, 600)
+nodes/vertex/13/node = SubResource("VisualShaderNodeVectorOp_uqf8c")
+nodes/vertex/13/position = Vector2(-360, 600)
+nodes/vertex/14/node = SubResource("VisualShaderNodeVectorOp_5mcgx")
+nodes/vertex/14/position = Vector2(300, 600)
+nodes/vertex/15/node = SubResource("VisualShaderNodeInput_r6bhc")
+nodes/vertex/15/position = Vector2(-1680, 980)
+nodes/vertex/22/node = SubResource("VisualShaderNodeFloatParameter_r6bhc")
+nodes/vertex/22/position = Vector2(-1320, 1160)
+nodes/vertex/23/node = SubResource("VisualShaderNodeFloatOp_r6bhc")
+nodes/vertex/23/position = Vector2(-680, 1100)
+nodes/vertex/25/node = SubResource("VisualShaderNodeMultiplyAdd_jm644")
+nodes/vertex/25/position = Vector2(-200, 1060)
+nodes/vertex/27/node = SubResource("VisualShaderNodeVectorFunc_5mcgx")
+nodes/vertex/27/position = Vector2(60, 1020)
+nodes/vertex/28/node = SubResource("VisualShaderNodeVec2Parameter_r6bhc")
+nodes/vertex/28/position = Vector2(-580, 1280)
+nodes/vertex/29/node = SubResource("VisualShaderNodeVec2Parameter_jm644")
+nodes/vertex/29/position = Vector2(-580, 900)
+nodes/vertex/30/node = SubResource("VisualShaderNodeInput_jm644")
+nodes/vertex/30/position = Vector2(-1660, 740)
+nodes/vertex/32/node = SubResource("VisualShaderNodeFloatOp_jm644")
+nodes/vertex/32/position = Vector2(-980, 980)
+nodes/vertex/33/node = SubResource("VisualShaderNodeFloatOp_uqf8c")
+nodes/vertex/33/position = Vector2(-1300, 780)
+nodes/vertex/connections = PackedInt32Array(5, 0, 6, 0, 4, 0, 0, 1, 6, 0, 4, 0, 9, 0, 13, 1, 13, 0, 6, 1, 13, 0, 14, 0, 25, 0, 27, 0, 22, 0, 23, 1, 14, 0, 4, 2, 22, 0, 32, 1, 32, 0, 23, 0, 27, 0, 14, 1, 28, 0, 25, 2, 29, 0, 25, 0, 23, 0, 25, 1, 15, 1, 32, 0, 15, 1, 33, 1, 30, 0, 33, 0)
+nodes/fragment/0/position = Vector2(400, 160)
