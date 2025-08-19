@@ -6,6 +6,7 @@ using Physics.Mains.v2;
 using Physics.Mains.v3;
 using Physics.Mains.v4;
 using Physics.Mains.v5;
+using Physics.Mains.v7_Game;
 
 namespace Physics;
 
@@ -31,10 +32,11 @@ public partial class Main : Node2D
 
         //gameLoop = new Main1(this, Background.Size);
         //gameLoop = new MainThreadInsert(this, Background.Size);
-        gameLoop = new MainMultimesh(this, Background.Size);
+        //gameLoop = new MainMultimesh(this, Background.Size);
         //gameLoop = new MainMultimeshThreads(this, Background.Size);
         //gameLoop = new MainArch(this, Background.Size);
-        //gameLoop = new MainArchSystems(this, Background.Size);
+        gameLoop = new MainArchSystems(this, Background.Size);
+        //gameLoop = new MainGame(this, Background.Size);
 
         //gameLoop = new MainPhysicsServer(this, Background.Size);
         gameLoop.OnReady();

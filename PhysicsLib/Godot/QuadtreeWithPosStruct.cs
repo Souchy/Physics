@@ -12,12 +12,14 @@ public class QuadtreeWithPosStruct<T> : Quadtree<T> where T : struct, IHasPositi
     public QuadtreeWithPosStruct() : base() { }
     public QuadtreeWithPosStruct(int depth, Rect2 bounds) : base(depth, bounds) { }
 
+    public virtual void Insert(T item) => Insert(item, item.Position);
+
     protected override void Reinsert(T dataItem, Vector2 inserterPos)
     {
         Insert(dataItem, dataItem.Position);
     }
 
-    public override Quadtree<T> CreateThis(int depth, Rect2 bounds)
+    public override QuadtreeWithPosStruct<T> CreateThis(int depth, Rect2 bounds)
     {
         return new QuadtreeWithPosStruct<T>(depth, bounds);
     }

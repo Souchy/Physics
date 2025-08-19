@@ -100,4 +100,11 @@ public class MultimeshSpawner
         Multimesh.SetInstanceCustomData(i, customData);
     }
 
+    public int CurrentIndex { get; set; } = 0;
+    public void UpdateInstance(Vector2 position, Vector2 velocity, Color color)
+    {
+        UpdateInstance(CurrentIndex, position, velocity, color);
+        CurrentIndex++;
+    }
+
 }
