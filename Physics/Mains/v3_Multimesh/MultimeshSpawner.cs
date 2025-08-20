@@ -30,7 +30,7 @@ public class MultimeshSpawner
     {
         MultiMeshInstance = new MultiMeshInstance2D()
         {
-            //Name = texture.ResourceName,
+            Name = texture.ResourcePath.Split("/").Last(),
             Texture = texture,
             Multimesh = new MultiMesh()
             {
@@ -67,7 +67,7 @@ public class MultimeshSpawner
     {
         //Multimesh.VisibleInstanceCount = Math.Max(0, Multimesh.VisibleInstanceCount - count);
 
-        int newVisibleCount  = Math.Max(0, VisibleCount - count);
+        int newVisibleCount = Math.Max(0, VisibleCount - count);
         count = VisibleCount - newVisibleCount;
         VisibleCount = newVisibleCount;
 
@@ -101,6 +101,11 @@ public class MultimeshSpawner
     }
 
     public int CurrentIndex { get; set; } = 0;
+    public void UpdateInstance(Vector2 position, Vector2 velocity)
+    {
+        UpdateInstance(CurrentIndex, position, velocity);
+        CurrentIndex++;
+    }
     public void UpdateInstance(Vector2 position, Vector2 velocity, Color color)
     {
         UpdateInstance(CurrentIndex, position, velocity, color);
@@ -110,6 +115,10 @@ public class MultimeshSpawner
     {
         UpdateInstance(CurrentIndex, position, velocity, color, customData);
         CurrentIndex++;
+    }
+    public void UpdateCurrentInstanceCustomData(Color customData)
+    {
+        Multimesh.SetInstanceCustomData(CurrentIndex, customData);
     }
 
 }

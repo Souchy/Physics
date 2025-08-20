@@ -1,4 +1,4 @@
-[gd_resource type="VisualShader" load_steps=20 format=3 uid="uid://d2oky0ocnxvmn"]
+[gd_resource type="VisualShader" load_steps=20 format=3 uid="uid://dk40bkey4wbsb"]
 
 [sub_resource type="VisualShaderNodeStep" id="VisualShaderNodeStep_saele"]
 
@@ -154,6 +154,7 @@ void fragment() {
 
 }
 "
+graph_offset = Vector2(-735.179, 100.986)
 mode = 1
 flags/light_only = false
 varyings/percent = "0,0"

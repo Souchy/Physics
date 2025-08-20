@@ -102,6 +102,15 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
     public const int CAPACITY = 10_000;
     public const bool threadedInsert = true;
     public const float HurtAnimationDuration = 0.2f;
+    public int MAX_LIFE = 10;
+    public const string LIFEBAR_NAME = "lifebar";
+    public const bool CAN_DIE = false;
+
+    public MultimeshSpawner LifebarSpawner
+    {
+        get => spawners[LIFEBAR_NAME];
+        set => spawners[LIFEBAR_NAME] = value;
+    }
 
     public int ParticleCount => activeEntities.Count;
 
@@ -267,7 +276,7 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
                 entityHurtAnimationTime[id1] = hurtTime;
                 float elapsed = HurtAnimationDuration - hurtTime;
                 float progress = elapsed / HurtAnimationDuration;
-                colors[id1] = new Color(1, 1, 1, progress); // Fade out hurt animation
+                colors[id1] = new Color(colors[id1], progress); // Fade out hurt animation
             }
 
             // Update collision immunity
@@ -343,16 +352,18 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
             //colors[Id1] = new Color(1, 0, 0); // Red for damage
             //colors[Id2] = new Color(1, 0, 0); // Red for damage
 
-            // Damage
+            //Damage
             if (entityLife.TryGetValue(Id1, out var lifeValue1))
             {
                 lifeValue1--;
+                if (lifeValue1 < 0) lifeValue1 = 0;
                 entityLife[Id1] = lifeValue1;
                 entityHurtAnimationTime[Id1] = HurtAnimationDuration;
             }
             if (entityLife.TryGetValue(Id2, out var lifeValue2))
             {
                 lifeValue2--;
+                if(lifeValue2 < 0) lifeValue2 = 0;
                 entityLife[Id2] = lifeValue2;
                 entityHurtAnimationTime[Id2] = HurtAnimationDuration;
             }
@@ -370,13 +381,14 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
         {
             int id = activeEntities[i];
             var textureParams = textures[id];
-            var hasSpawner = spawners.TryGetValue(textureParams.Path, out var spawner);
+            bool hasSpawner = spawners.TryGetValue(textureParams.Path, out var spawner);
+            bool hasLife = entityLife.TryGetValue(id, out int life);
 
             // if (false) // if entity should be cleared
             // {
             //     entitySpriteAnimationTime.Remove(id);
             // }
-            if (entityLife.TryGetValue(id, out int life) && life <= 0)
+            if (hasLife && life <= 0 && CAN_DIE)
             {
                 // Remove particle
                 ids.ReleaseId(id);
@@ -389,6 +401,7 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
                 entityLife.Remove(id);
                 if (hasSpawner)
                     spawner.RemoveInstance();
+                LifebarSpawner.RemoveInstance();
                 continue;
             }
             else
@@ -401,10 +414,31 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
                     entityHurtAnimationTime.TryGetValue(id, out float hurtAnimTime);
 
                     spawner.UpdateInstance(spatial.Position, spatial.Velocity, color, new(animationTimer.CurrentTime, 0, 0, 0));  //spriteAnimTime, textureParams.AnimationDuration, hurtAnimTime, HurtAnimationDuration));
+
+                    if(hasLife)
+                    {
+                        if (life == MAX_LIFE)
+                        {
+                            LifebarSpawner.UpdateInstance(Vector2.Zero, Vector2.Zero, Transparent, Transparent);
+                        }
+                        else
+                        if (life < MAX_LIFE)
+                        {
+
+                            float percent = (float) life / MAX_LIFE;
+                            float oldPercent = percent;
+                            float entityRadius = collisionShapes[id].Radius;
+                            var lifePos = spatial.Position - new Vector2(0, entityRadius + LifebarOffset);
+                            LifebarSpawner.UpdateInstance(lifePos, Vector2.Zero, White, new(percent, oldPercent, 0, 0));
+                        }
+                    }
                 }
             }
         }
     }
+    public static readonly Color White = new(1, 1, 1, 1);
+    public static readonly Color Transparent = new(1, 1, 1, 0);
+    public const float LifebarOffset = 5f;
 
     public void AddParticle(int team, int detectionMask, int collisionLayer, Color color)
     {
@@ -435,7 +469,7 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
         if (team == 2) // 500 ally projectiles
         {
             // 16x16 per sprite, 640x400 total = 40x25 steps
-            textureParam = new TextureParam("res://Assets/All_Fire_Bullet_Pixel_16x16_05.png"); //, new Vector2(40, 25), new(21, 11, 4, 1), 1f, "");
+            textureParam = new TextureParam("res://Assets/All_Fire_Bullet_Pixel_16x16_05.png");
             animParam = new ShaderSpriteAnimParam("res://Assets/spritesheetAnimatedMultimeshShader.tres", new Vector2(40, 25), new Vector2(6, 10), new Vector2(4, 1), 0.4f);
             entitySpriteAnimationTime[id] = new AnimationTimer(0f, animParam.Value.AnimationDuration);
 
@@ -446,12 +480,30 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
         else
         if (team == 1) // 4000 enemies
         {
-            textureParam = new TextureParam("res://Assets/right-arrow.png"); //, new Vector2(1, 1), new(0, 0, 1, 1), 1f);
+            textureParam = new TextureParam("res://Assets/right-arrow.png");
             collisionShapes[id] = new CollisionShape(newSize / 2f, 1, 0, 0f); // (int) (CollisionLayers.Player | CollisionLayers.Projectile)
-            //colors[id] = new Color(tint, 0, 0, 1);
-            colors[id] = new(1, 1, 1, 1);
+            colors[id] = new Color(0, tint, tint, 1);
+            //colors[id] = new(1, 1, 1, 1);
             // life
-            entityLife[id] = 10;
+            entityLife[id] = MAX_LIFE - 1;
+
+            // lifebar multimesh
+            if (!spawners.TryGetValue(LIFEBAR_NAME, out _))
+            {
+                var lifebarTexture = GD.Load<Texture2D>("res://Assets/lifebarTexture.tres");
+                var lifebarTexture2 = GD.Load<Texture2D>("res://Assets/lifebarTexture2.tres");
+
+                LifebarSpawner = new MultimeshSpawner(lifebarTexture, new Vector2(32, 8), MultimeshSpawnerFlags.All);
+
+                var mat = new ShaderMaterial()
+                {
+                    Shader = GD.Load<Shader>("res://Assets/progressbarMultimeshShader.tres"),
+                };
+                mat.SetShaderParameter("LossTexture", lifebarTexture2);
+                LifebarSpawner.MultiMeshInstance.Material = mat;
+                SpritesPool.AddChild(LifebarSpawner.MultiMeshInstance);
+            }
+            LifebarSpawner.AddInstances(1);
         }
         // texture
         if (textures.Length <= id) Array.Resize(ref textures, id + 1000);
@@ -476,7 +528,6 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
                 mat.SetShaderParameter("AnimationDuration", animParam.Value.AnimationDuration);
                 spawner.MultiMeshInstance.Material = mat;
             }
-
             SpritesPool.AddChild(spawner.MultiMeshInstance);
         }
         // spawwner
