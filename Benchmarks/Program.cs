@@ -1,5 +1,6 @@
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Running;
+using Benchmarks.Maths;
 using Benchmarks.Physics;
 using Benchmarks.Quadtree;
 using Benchmarks.System;
@@ -12,6 +13,9 @@ internal class Program
     {
         //BenchmarkRunner.Run<QuadtreeBenchmark>();
         //BenchmarkRunner.Run<SystemBenchmark>();
+
+        BenchmarkRunner.Run<Vector2Benchmark>();
+        return;
 
         var config = ManualConfig.Create(DefaultConfig.Instance)
           .WithOptions(ConfigOptions.JoinSummary | ConfigOptions.StopOnFirstError);

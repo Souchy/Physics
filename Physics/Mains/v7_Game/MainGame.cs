@@ -7,17 +7,37 @@ using PhysicsLib.Util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Threading.Tasks;
+using Vector2G = Godot.Vector2;
+//using Vector2N = Godot.Vector2;
+using Vector2N = System.Numerics.Vector2;
+
 
 namespace Physics.Mains.v7_Game;
 
-public record struct PositionId(int Id, Vector2 Position) : IHasPosition;
-public record struct Spatial(Vector2 Position, Vector2 Velocity);
+public static class NumericsExtensions
+{
+    public static System.Numerics.Vector2 Bounce(this System.Numerics.Vector2 vector, System.Numerics.Vector2 normal)
+    {
+        return vector - 2 * System.Numerics.Vector2.Dot(vector, normal) * normal;
+    }
+    public static System.Numerics.Vector2 Normalized(this System.Numerics.Vector2 vector)
+    {
+        float length = vector.Length();
+        if (length == 0) return System.Numerics.Vector2.Zero;
+        return vector / length;
+    }
+}
+
+
+public record struct PositionId(int Id, Vector2N Position) : IHasPosition;
+public record struct Spatial(Vector2N Position, Vector2N Velocity);
 //public record struct Life(int Current, int Max);
 public record struct CollisionShape(float Radius, int CollisionLayer, int CollisionMask, float CollisionImmunityTimer);
 public record struct TextureParam(string Path);
-public record struct ShaderSpriteAnimParam(string shader, Vector2 StepsCount, Vector2 StepAnimStart, Vector2 StepAnimSize, float AnimationDuration = 1f);
-public record struct Collision(int Id1, int Id2, Vector2 Normal);
+public record struct ShaderSpriteAnimParam(string shader, Vector2G StepsCount, Vector2G StepAnimStart, Vector2G StepAnimSize, float AnimationDuration = 1f);
+public record struct Collision(int Id1, int Id2, Vector2N Normal);
 
 public record struct AnimationTimer(float CurrentTime, float Duration);
 
@@ -56,18 +76,18 @@ public record struct ValueAnimation<T>(T Current, T Target, float Duration, floa
         // This needs to be implemented based on the type of T
         if (current is float floatCurrent && target is float floatTarget)
         {
-            return (T)(object)Mathf.Lerp(floatCurrent, floatTarget, t);
+            return (T) (object) Mathf.Lerp(floatCurrent, floatTarget, t);
         }
-        else if (current is Vector2 vectorCurrent && target is Vector2 vectorTarget)
+        else if (current is Vector2N vectorCurrent && target is Vector2N vectorTarget)
         {
-            return (T)(object)new Vector2(
+            return (T) (object) new Vector2N(
                 Mathf.Lerp(vectorCurrent.X, vectorTarget.X, t),
                 Mathf.Lerp(vectorCurrent.Y, vectorTarget.Y, t)
             );
         }
         else if (current is Color colorCurrent && target is Color colorTarget)
         {
-            return (T)(object)new Color(
+            return (T) (object) new Color(
                 Mathf.Lerp(colorCurrent.R, colorTarget.R, t),
                 Mathf.Lerp(colorCurrent.G, colorTarget.G, t),
                 Mathf.Lerp(colorCurrent.B, colorTarget.B, t),
@@ -91,7 +111,7 @@ public enum CollisionLayers
     All = Player | Enemy | Projectile | Terrain
 }
 
-public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
+public class MainGame(Node mainNode, Vector2G backgroundSize) : IGameLoop
 {
     #region Nodes
     public Node2D SpritesPool { get; set; } = null!;
@@ -130,8 +150,8 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
 
 
     public Dictionary<string, MultimeshSpawner> spawners;
-    public Dictionary<int, QuadtreeWithPosStruct<PositionId>> quadtrees;
-    public Dictionary<int, QuadtreeWithPosStruct<PositionId>> quadtreesSwap;
+    public Dictionary<int, NumericsQuadtree<PositionId>> quadtrees;
+    public Dictionary<int, NumericsQuadtree<PositionId>> quadtreesSwap;
     public bool quadtreeReady = false;
 
     public void OnReady()
@@ -148,17 +168,17 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
 
         quadtrees = new(10)
         {
-            [(int)CollisionLayers.Player] = new(0, new Rect2(Vector2.Zero, backgroundSize)),
-            [(int)CollisionLayers.Enemy] = new(0, new Rect2(Vector2.Zero, backgroundSize)),
-            [(int)(CollisionLayers.Player | CollisionLayers.Projectile)] = new(0, new Rect2(Vector2.Zero, backgroundSize)),
-            [(int)(CollisionLayers.Enemy | CollisionLayers.Projectile)] = new(0, new Rect2(Vector2.Zero, backgroundSize)),
+            [(int) CollisionLayers.Player] = new(0, new Rect2(Vector2G.Zero, backgroundSize)),
+            [(int) CollisionLayers.Enemy] = new(0, new Rect2(Vector2G.Zero, backgroundSize)),
+            [(int) (CollisionLayers.Player | CollisionLayers.Projectile)] = new(0, new Rect2(Vector2G.Zero, backgroundSize)),
+            [(int) (CollisionLayers.Enemy | CollisionLayers.Projectile)] = new(0, new Rect2(Vector2G.Zero, backgroundSize)),
         };
         quadtreesSwap = new(10)
         {
-            [(int)CollisionLayers.Player] = new(0, new Rect2(Vector2.Zero, backgroundSize)),
-            [(int)CollisionLayers.Enemy] = new(0, new Rect2(Vector2.Zero, backgroundSize)),
-            [(int)(CollisionLayers.Player | CollisionLayers.Projectile)] = new(0, new Rect2(Vector2.Zero, backgroundSize)),
-            [(int)(CollisionLayers.Enemy | CollisionLayers.Projectile)] = new(0, new Rect2(Vector2.Zero, backgroundSize)),
+            [(int) CollisionLayers.Player] = new(0, new Rect2(Vector2G.Zero, backgroundSize)),
+            [(int) CollisionLayers.Enemy] = new(0, new Rect2(Vector2G.Zero, backgroundSize)),
+            [(int) (CollisionLayers.Player | CollisionLayers.Projectile)] = new(0, new Rect2(Vector2G.Zero, backgroundSize)),
+            [(int) (CollisionLayers.Enemy | CollisionLayers.Projectile)] = new(0, new Rect2(Vector2G.Zero, backgroundSize)),
         };
 
         spawners = new(10);
@@ -256,12 +276,12 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
 
             RespectBounds(ref spatial1, backgroundSize);
 
-            spatial1.Position += spatial1.Velocity * (float)delta;
+            spatial1.Position += spatial1.Velocity * (float) delta;
 
             // Update sprite animation
             if (entitySpriteAnimationTime.TryGetValue(id1, out var animTimer))
             {
-                animTimer.CurrentTime += (float)delta;
+                animTimer.CurrentTime += (float) delta;
                 if (animTimer.CurrentTime > animTimer.Duration)
                     animTimer.CurrentTime = 0f;
                 entitySpriteAnimationTime[id1] = animTimer;
@@ -283,7 +303,7 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
             ref var shape1 = ref collisionShapes[id1];
             if (shape1.CollisionImmunityTimer > 0f)
             {
-                shape1.CollisionImmunityTimer -= (float)delta;
+                shape1.CollisionImmunityTimer -= (float) delta;
                 if (shape1.CollisionImmunityTimer < 0f)
                     shape1.CollisionImmunityTimer = 0f;
                 return;
@@ -292,37 +312,45 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
             if (shape1.CollisionMask == 0)
                 return;
 
-            // Check collissions
+            // Check collisions
             var quadtree = quadtrees[shape1.CollisionMask];
             var results = quadtree.QueryNodes(spatial1.Position, shape1.Radius, []);
-            foreach (var p2 in results.SelectMany(n => n.Data))
+            foreach (var node in results)
             {
-                if (p2.Id == id1) //entities[i])
-                    continue;
-                //var otherIndex = entities.IndexOf(p2.Id);
-                int id2 = p2.Id;
-
-                var shape2 = collisionShapes[id2];
-                if (shape2.CollisionImmunityTimer > 0f)
-                    continue;
-                var spatial2 = spatials[id2];
-                var deltaPos = spatial1.Position - spatial2.Position;
-                var distSquared = deltaPos.LengthSquared();
-                float maxDist = shape1.Radius + shape2.Radius;
-                if (distSquared < maxDist * maxDist)
+                foreach (var p2 in node.Data)
                 {
-                    var normal = deltaPos.Normalized();
-                    allCollisions[id1] = new Collision(id1, id2, normal);
-                    collisionShapes[id1].CollisionImmunityTimer = 0.1f;
-                    collisionShapes[id2].CollisionImmunityTimer = 0.1f;
-                    break;
+                    if (p2.Id == id1)
+                        continue;
+                    int id2 = p2.Id;
+
+                    ref var shape2 = ref collisionShapes[id2];
+                    if (shape2.CollisionImmunityTimer > 0f)
+                        continue;
+                    var spatial2 = spatials[id2];
+                    var deltaPos = spatial1.Position - spatial2.Position;
+                    var distSquared = deltaPos.LengthSquared();
+                    float maxDist = shape1.Radius + shape2.Radius;
+                    if (distSquared < maxDist * maxDist)
+                    {
+                        Vector2N normal = Vector2N.Zero;
+                        if (distSquared != 0)
+                        {
+                            float length = MathF.Sqrt(distSquared);
+                            normal = deltaPos / length; // deltaPos.Normalized();
+                        }
+                        allCollisions[id1] = new Collision(id1, id2, normal);
+                        shape1.CollisionImmunityTimer = 0.1f;
+                        shape2.CollisionImmunityTimer = 0.1f;
+                        //break;
+                        return;
+                    }
                 }
             }
         }
         );
     }
 
-    public virtual void RespectBounds(ref Spatial spatial, Vector2 Bounds)
+    public virtual void RespectBounds(ref Spatial spatial, Vector2G Bounds)
     {
         float vx = spatial.Velocity.X;
         float vy = spatial.Velocity.Y;
@@ -337,7 +365,7 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
         if (spatial.Position.Y < 0)
             vy = Math.Abs(spatial.Velocity.Y);
 
-        spatial.Velocity = new Vector2(vx, vy);
+        spatial.Velocity = new Vector2N(vx, vy);
     }
 
     public void UpdateCollisions(double delta)
@@ -356,14 +384,14 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
             if (entityLife.TryGetValue(Id1, out var lifeValue1))
             {
                 lifeValue1--;
-                if (lifeValue1 < 0) lifeValue1 = 0;
+                if (lifeValue1 < 1) lifeValue1 = 1;
                 entityLife[Id1] = lifeValue1;
                 entityHurtAnimationTime[Id1] = HurtAnimationDuration;
             }
             if (entityLife.TryGetValue(Id2, out var lifeValue2))
             {
                 lifeValue2--;
-                if(lifeValue2 < 0) lifeValue2 = 0;
+                if (lifeValue2 < 1) lifeValue2 = 1;
                 entityLife[Id2] = lifeValue2;
                 entityHurtAnimationTime[Id2] = HurtAnimationDuration;
             }
@@ -372,10 +400,10 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
 
     public void UpdateNodes(double delta)
     {
-        foreach (var spawner in spawners.Values)
-        {
-            spawner.CurrentIndex = 0;
-        }
+        //foreach (var spawner in spawners.Values)
+        //{
+        //    spawner.CurrentInstance = 0;
+        //}
 
         for (int i = ParticleCount - 1; i >= 0; i--)
         {
@@ -415,11 +443,11 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
 
                     spawner.UpdateInstance(spatial.Position, spatial.Velocity, color, new(animationTimer.CurrentTime, 0, 0, 0));  //spriteAnimTime, textureParams.AnimationDuration, hurtAnimTime, HurtAnimationDuration));
 
-                    if(hasLife)
+                    if (hasLife)
                     {
                         if (life == MAX_LIFE)
                         {
-                            LifebarSpawner.UpdateInstance(Vector2.Zero, Vector2.Zero, Transparent, Transparent);
+                            LifebarSpawner.UpdateInstance(Vector2N.Zero, Vector2N.Zero, Transparent, Transparent);
                         }
                         else
                         if (life < MAX_LIFE)
@@ -428,12 +456,16 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
                             float percent = (float) life / MAX_LIFE;
                             float oldPercent = percent;
                             float entityRadius = collisionShapes[id].Radius;
-                            var lifePos = spatial.Position - new Vector2(0, entityRadius + LifebarOffset);
-                            LifebarSpawner.UpdateInstance(lifePos, Vector2.Zero, White, new(percent, oldPercent, 0, 0));
+                            var lifePos = spatial.Position - new Vector2N(0, entityRadius + LifebarOffset);
+                            LifebarSpawner.UpdateInstance(lifePos, Vector2N.Zero, White, new(percent, oldPercent, 0, 0));
                         }
                     }
                 }
             }
+        }
+        foreach (var spawner in spawners.Values)
+        {
+            spawner.SendToGodot();
         }
     }
     public static readonly Color White = new(1, 1, 1, 1);
@@ -442,14 +474,15 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
 
     public void AddParticle(int team, int detectionMask, int collisionLayer, Color color)
     {
-        Vector2 position = Vector2.Zero;
+        Vector2N position = Vector2N.Zero;
         // set position randomly on a circle around the origin
         float angle = GD.Randf() * Mathf.Tau;
         position.X = Mathf.Cos(angle);
         position.Y = Mathf.Sin(angle);
         position *= 500;
-        Vector2 velocity = -position.Normalized() * 200f;
-        position += backgroundSize / 2f;
+        Vector2N velocity = -position.Normalized() * 200f;
+        //position += backgroundSize / 2f;
+        position = new Vector2N(position.X + backgroundSize.X / 2f, position.Y + backgroundSize.Y / 2f);
 
 
         int id = ids.GetNextId();
@@ -470,7 +503,7 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
         {
             // 16x16 per sprite, 640x400 total = 40x25 steps
             textureParam = new TextureParam("res://Assets/All_Fire_Bullet_Pixel_16x16_05.png");
-            animParam = new ShaderSpriteAnimParam("res://Assets/spritesheetAnimatedMultimeshShader.tres", new Vector2(40, 25), new Vector2(6, 10), new Vector2(4, 1), 0.4f);
+            animParam = new ShaderSpriteAnimParam("res://Assets/spritesheetAnimatedMultimeshShader.tres", new(40, 25), new(6, 10), new(4, 1), 0.4f);
             entitySpriteAnimationTime[id] = new AnimationTimer(0f, animParam.Value.AnimationDuration);
 
             colors[id] = new(1, 1, 1, 1); //new Color(0, tint, 0);
@@ -493,7 +526,7 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
                 var lifebarTexture = GD.Load<Texture2D>("res://Assets/lifebarTexture.tres");
                 var lifebarTexture2 = GD.Load<Texture2D>("res://Assets/lifebarTexture2.tres");
 
-                LifebarSpawner = new MultimeshSpawner(lifebarTexture, new Vector2(32, 8), MultimeshSpawnerFlags.All);
+                LifebarSpawner = new MultimeshSpawner(lifebarTexture, new Vector2G(32, 8), MultimeshSpawnerFlags.All);
 
                 var mat = new ShaderMaterial()
                 {
@@ -513,7 +546,7 @@ public class MainGame(Node mainNode, Vector2 backgroundSize) : IGameLoop
         if (!spawners.TryGetValue(textureParam.Path, out var spawner))
         {
             var texture = GD.Load<Texture2D>(textureParam.Path);
-            spawner = new MultimeshSpawner(texture, new Vector2(newSize, newSize), MultimeshSpawnerFlags.All);
+            spawner = new MultimeshSpawner(texture, new Vector2G(newSize, newSize), MultimeshSpawnerFlags.All);
             spawners[textureParam.Path] = spawner;
 
             if (animParam != null)
