@@ -1,32 +1,46 @@
 using Arch.Core;
 using Arch.Core.Extensions;
+using CommunityToolkit.HighPerformance.Buffers;
 using Godot;
 using Godot.Sharp.Extras;
 using Physics.Mains.v1;
 using Physics.Mains.v3_Multimesh;
 using Physics.Mains.v5_Arch;
+using Physics.Mains.v7_Game;
 using PhysicsLib.Godot;
 using PhysicsLib.Util;
 using System;
 using System.Collections.Generic;
+using TextureParam = Physics.Mains.v7_Game.TextureParam;
 
 namespace Physics.Mains.v5;
 
+//public record struct PositionEntity(int Id, Vector2 Position) : IHasPosition;
 /// <summary>
 /// https://arch-ecs.gitbook.io/arch
 /// </summary>
-public class MainArchSystems(Node mainNode, Vector2 backgroundSize) : IGameLoop //: MainMultimesh(mainNode, backgroundSize)
+public class MainArchSystemsGame(Node mainNode, Vector2 backgroundSize) : IGameLoop //: MainMultimesh(mainNode, backgroundSize)
 {
     public const float newSize = 32;
     public const float spriteSize = 32;
     public const double CollisionImmunityTimer = 0.2;
     public const bool threadedInsert = true;
+    public const float HurtAnimationDuration = 0.2f;
+    public int MAX_LIFE = 10;
+    public const string LIFEBAR_NAME = "lifebar";
+    public const bool CAN_DIE = false;
+
+    public MultimeshSpawner LifebarSpawner
+    {
+        get => spawners[LIFEBAR_NAME];
+        set => spawners[LIFEBAR_NAME] = value;
+    }
 
     #region Nodes
     public Node2D SpritesPool { get; set; } = null!;
     #endregion
-    public Texture2D texture;
-    public MultimeshSpawner spawner;
+    //public Texture2D texture;
+    //public MultimeshSpawner spawner;
 
     public int ParticleCount => world.CountEntities(aliveQuery); //particles.Count; //particleDict.Count;
 
@@ -39,26 +53,44 @@ public class MainArchSystems(Node mainNode, Vector2 backgroundSize) : IGameLoop 
     public IntId ids = new();
 
     private List<Entity> quadtreeEntities = new();
-    private List<Entity> quadtreeEntitiesSwap = new();
-    public Quadtree<Entity> quadtree;
-    private Quadtree<Entity> quadtreeSwap;
-    private Quadtree<Entity> quadtreeThread;
+    //private List<Entity> quadtreeEntitiesSwap = new();
+    //public Quadtree<Entity> quadtree;
+    //private Quadtree<Entity> quadtreeSwap;
+    //private Quadtree<Entity> quadtreeThread;
+    public Dictionary<string, MultimeshSpawner> spawners;
+    public Dictionary<int, EntityQuadtree> quadtrees;
+    public Dictionary<int, EntityQuadtree> quadtreesSwap;
+    public bool quadtreeReady = false;
 
 
     public void OnReady()
     {
         var size = backgroundSize;
         var bounds = new Rect2(Vector2.Zero, size);
-        quadtree = new EntityQuadtree(0, bounds);
-        //particles = new(10_000);
+
+        spawners = new(10);
+        quadtrees = new(10)
+        {
+            [(int) CollisionLayers.Player] = new(0, new Rect2(Vector2.Zero, backgroundSize)),
+            [(int) CollisionLayers.Enemy] = new(0, new Rect2(Vector2.Zero, backgroundSize)),
+            [(int) (CollisionLayers.Player | CollisionLayers.Projectile)] = new(0, new Rect2(Vector2.Zero, backgroundSize)),
+            [(int) (CollisionLayers.Enemy | CollisionLayers.Projectile)] = new(0, new Rect2(Vector2.Zero, backgroundSize)),
+        };
+        quadtreesSwap = new(10)
+        {
+            [(int) CollisionLayers.Player] = new(0, new Rect2(Vector2.Zero, backgroundSize)),
+            [(int) CollisionLayers.Enemy] = new(0, new Rect2(Vector2.Zero, backgroundSize)),
+            [(int) (CollisionLayers.Player | CollisionLayers.Projectile)] = new(0, new Rect2(Vector2.Zero, backgroundSize)),
+            [(int) (CollisionLayers.Enemy | CollisionLayers.Projectile)] = new(0, new Rect2(Vector2.Zero, backgroundSize)),
+        };
+
 
         SpritesPool = mainNode.GetNode<Node2D>("%SpritesPool");
-        texture = GD.Load<Texture2D>("res://Assets/right-arrow.png");
-
-        spawner = new(texture, new Vector2(newSize, newSize), MultimeshSpawnerFlags.Color);
-        SpritesPool.AddChild(spawner.MultiMeshInstance);
-
         world = World.Create();
+
+        //texture = GD.Load<Texture2D>("res://Assets/right-arrow.png");
+        //spawner = new(texture, new Vector2(newSize, newSize), MultimeshSpawnerFlags.Color);
+        //SpritesPool.AddChild(spawner.MultiMeshInstance);
     }
 
     public void Start()
@@ -66,34 +98,52 @@ public class MainArchSystems(Node mainNode, Vector2 backgroundSize) : IGameLoop 
         if (threadedInsert)
             Scheduler.RunTimed(16, (delta) =>
             {
-                var bounds = new Rect2(Vector2.Zero, backgroundSize);
-                quadtreeThread = new EntityQuadtree(0, bounds);
+                if (quadtreeReady)
+                    return;
+
+                foreach (var quadtree in quadtreesSwap.Values)
+                    quadtree.Clear();
+
 
                 List<Entity> copy = null;
-                if (quadtreeEntitiesSwap != null)
+                lock (quadtreeEntities)
                 {
-                    // Swap quadtree references
-                    //quadtree.Clear();
-                    copy = quadtreeEntitiesSwap;
-                    //quadtreeSwap.Clear();
-                    quadtreeEntitiesSwap = null;
+                    copy = [.. quadtreeEntities];
                 }
                 if (copy == null) return;
-                //List<Entity> copy; //;
-                //lock (quadtreeEntitiesSwap)
+
+                // Update quadtree(s)
+                //foreach (var p in copy)
                 //{
-                //    copy = new(quadtreeEntitiesSwap);
+                //    if (p.IsAlive() && p.Get<CollisionLayer>().Value != 0)
+                //    {
+                //        var pos = p.Get<Position>().Value;
+                //        quadtreeThread.Insert(p, pos);
+                //    }
                 //}
+                //quadtreeSwap = quadtreeThread;
+
                 // Update quadtree(s)
                 foreach (var p in copy)
                 {
-                    if (p.IsAlive() && p.Get<CollisionLayer>().Value != 0)
+                    //int layer = collisionShapes[p].CollisionLayer;
+                    //if (layer == 0)
+                    //    continue;
+                    //if (entityLife.TryGetValue(p, out var lifeValue) && lifeValue <= 0)
+                    //    continue;
+                    //var spatial = spatials[p];
+                    //var positionid = new PositionId(p, spatial.Position);
+                    //quadtreesSwap[layer].Insert(positionid);
+                    int layer = p.Get<CollisionLayer>().Value;
+                    if (p.IsAlive() && layer != 0)
                     {
                         var pos = p.Get<Position>().Value;
-                        quadtreeThread.Insert(p, pos);
+                        //quadtreeThread.Insert(p, pos);
+                        quadtreesSwap[layer].Insert(p, pos); //new(p.Id, new(pos.X, pos.Y)));
                     }
                 }
-                quadtreeSwap = quadtreeThread;
+                quadtreeReady = true;
+
                 //world.Query(quadtreeQuery, (Entity entt, ref Position position, ref CollisionLayer collisionLayer) =>
                 //{
                 //    if (collisionLayer.Value != 0)
@@ -106,9 +156,6 @@ public class MainArchSystems(Node mainNode, Vector2 backgroundSize) : IGameLoop 
 
     public void AddParticles(int count, int team, int detectionMask, int collisionLayer, Color color)
     {
-        // Manage visible instances
-        spawner.AddInstances(count);
-
         for (int i = 0; i < count; i++)
             AddParticle(team, detectionMask, collisionLayer, color);
     }
@@ -140,6 +187,25 @@ public class MainArchSystems(Node mainNode, Vector2 backgroundSize) : IGameLoop 
 
         // Offset to center the particles in the background
         position += backgroundSize / 2f;
+
+
+        // ---------------------------------
+        TextureParam textureParam = new();
+        ShaderSpriteAnimParam? animParam = null;
+        AnimationTimer? animTimer = null;
+        if (team == 2)
+        {
+            textureParam = new TextureParam("res://Assets/All_Fire_Bullet_Pixel_16x16_05.png");
+            animParam = new ShaderSpriteAnimParam("res://Assets/spritesheetAnimatedMultimeshShader.tres", new(40, 25), new(6, 10), new(4, 1), 0.4f);
+            animTimer = new AnimationTimer(0f, animParam.Value.AnimationDuration);
+            AddLifebarSpawnerInstance();
+        }
+        else if (team == 1)
+        {
+            textureParam = new TextureParam("res://Assets/right-arrow.png");
+        }
+        AddSpawnerInstance(textureParam, animParam);
+        // ---------------------------------
 
         var entt = world.Create(
             new Id(id),
@@ -174,17 +240,71 @@ public class MainArchSystems(Node mainNode, Vector2 backgroundSize) : IGameLoop 
                             p.Get<Alive>().Value = false;
                     }
                 }
-            })
+            }),
+            textureParam
         );
+        if(animParam != null)
+        {
+            entt.Set(animParam.Value);
+            entt.Set(animTimer);
+        }
 
         return id;
+    }
+
+    public void AddSpawnerInstance(TextureParam textureParam, ShaderSpriteAnimParam? animParam)
+    {
+        // multimesh spawner
+        if (!spawners.TryGetValue(textureParam.Path, out var spawner))
+        {
+            var texture = GD.Load<Texture2D>(textureParam.Path);
+            spawner = new MultimeshSpawner(texture, new Vector2(newSize, newSize), MultimeshSpawnerFlags.All);
+            spawners[textureParam.Path] = spawner;
+
+            if (animParam != null)
+            {
+                var mat = new ShaderMaterial()
+                {
+                    Shader = GD.Load<Shader>(animParam.Value.shader),
+                };
+                mat.SetShaderParameter("Steps", animParam.Value.StepsCount);
+                mat.SetShaderParameter("StepsAnimationStart", animParam.Value.StepAnimStart);
+                mat.SetShaderParameter("StepsAnimationRange", animParam.Value.StepAnimSize);
+                mat.SetShaderParameter("AnimationDuration", animParam.Value.AnimationDuration);
+                spawner.MultiMeshInstance.Material = mat;
+            }
+            SpritesPool.AddChild(spawner.MultiMeshInstance);
+        }
+        // spawwner
+        spawner.AddInstances(1);
+    }
+
+    public void AddLifebarSpawnerInstance()
+    {
+        // lifebar multimesh
+        if (!spawners.TryGetValue(LIFEBAR_NAME, out _))
+        {
+            var lifebarTexture = GD.Load<Texture2D>("res://Assets/lifebarTexture.tres");
+            var lifebarTexture2 = GD.Load<Texture2D>("res://Assets/lifebarTexture2.tres");
+
+            LifebarSpawner = new MultimeshSpawner(lifebarTexture, new Vector2(32, 8), MultimeshSpawnerFlags.All);
+
+            var mat = new ShaderMaterial()
+            {
+                Shader = GD.Load<Shader>("res://Assets/progressbarMultimeshShader.tres"),
+            };
+            mat.SetShaderParameter("LossTexture", lifebarTexture2);
+            LifebarSpawner.MultiMeshInstance.Material = mat;
+            SpritesPool.AddChild(LifebarSpawner.MultiMeshInstance);
+        }
+        LifebarSpawner.AddInstances(1);
     }
 
     public void RemoveParticles(int count)
     {
 
         count = Math.Min(count, ParticleCount);
-        spawner.RemoveInstances(count);
+        //spawner.RemoveInstances(count);
 
         //for (int c = 0; c < count; c++)
         //{
@@ -222,25 +342,23 @@ public class MainArchSystems(Node mainNode, Vector2 backgroundSize) : IGameLoop 
     {
         if (threadedInsert)
         {
+            if (!quadtreeReady)
+                return;
 
-            if (quadtreeSwap != null)
-            {
-                // Swap quadtree references
-                //quadtree.Clear();
-                quadtree = quadtreeSwap;
-                //quadtreeSwap.Clear();
-                quadtreeSwap = null;
-            }
+            // Swap quadtrees
+            (quadtreesSwap, quadtrees) = (quadtrees, quadtreesSwap);
+            quadtreeReady = false;
         }
         else
         {
             // Update quadtree
-            quadtree.Clear();
+            foreach (var quadtree in quadtrees.Values)
+                quadtree.Clear();
             world.Query(quadtreeQuery, (Entity entt, ref Position position, ref CollisionLayer collisionLayer) =>
             {
                 if (collisionLayer.Value != 0)
                 {
-                    quadtree.Insert(entt, position.Value);
+                    quadtrees[collisionLayer.Value].Insert(entt, position.Value); //new(entt.Id, new(position.Value.X, position.Value.Y)));
                 }
             });
         }
@@ -273,7 +391,7 @@ public class MainArchSystems(Node mainNode, Vector2 backgroundSize) : IGameLoop 
 
         //lock (quadtreeEntitiesSwap)
         //{
-        quadtreeEntitiesSwap = quadtreeEntities;
+        //quadtreeEntitiesSwap = quadtreeEntities;
         //}
 
     }
@@ -290,10 +408,16 @@ public class MainArchSystems(Node mainNode, Vector2 backgroundSize) : IGameLoop 
                 ids.ReleaseId(id.Value);
                 world.Destroy(entt);
                 dead++;
+                //bool hasSpawner = spawners.TryGetValue(entt.Get<TextureParam>().Path, out var spawner);
             }
         });
-        spawner.RemoveInstances(dead);
-        spawner.SendToGodot()
+        //spawners
+        //spawner.RemoveInstances(dead);
+        //spawner.SendToGodot();
+        foreach (var spawner in spawners.Values)
+        {
+            spawner.SendToGodot();
+        }
     }
 
     public void UpdateParticleNode(int i, Entity p, double delta)
@@ -304,7 +428,10 @@ public class MainArchSystems(Node mainNode, Vector2 backgroundSize) : IGameLoop 
         position.Value += velocity.Value * (float) delta;
 
         //// Update sprite
-        spawner.UpdateInstance(i, position.Value, velocity.Value, p.Get<Modulate>().Value);
+        //spawner.UpdateInstance(i, position.Value, velocity.Value, p.Get<Modulate>().Value);
+        var tex = p.Get<TextureParam>();
+        p.TryGet<AnimationTimer>(out var animationTimer);
+        spawners[tex.Path].UpdateInstance(position.Value, velocity.Value, p.Get<Modulate>().Value, new(animationTimer.CurrentTime, 0, 0, 0));
     }
     #endregion
 
@@ -316,8 +443,9 @@ public class MainArchSystems(Node mainNode, Vector2 backgroundSize) : IGameLoop 
         if (collisionImmunity1.Value > 0) return; // Skip if immune to collisions
         //var node = quadtree.GetNode(p1.Position); // 30 avg fps with inserting in all overlapping nodes
 
-        var (position1, size1) = p1.Get<Position, Size>();
-        var nodes = quadtree.QueryNodes(position1.Value, size1.Value, []);
+        var (position1, size1) = p1.Get<Position, v5_Arch.Size>();
+
+        var nodes = quadtrees[detectionMask1.Value].QueryNodes(position1.Value, size1.Value, []);
         foreach (var node in nodes)
         {
             foreach (var p2 in node.Data)
@@ -369,11 +497,11 @@ public class MainArchSystems(Node mainNode, Vector2 backgroundSize) : IGameLoop 
         velocity.Value = new Vector2(vx, vy);
     }
 
-    public void Process(double delta)
-    {
-        Main.Instance.QuadtreeLines.RemoveAndQueueFreeChildren();
-        DrawChunks(quadtree, 0, Quadtree<int>.MAX_DEPTH);
-    }
+    //public void Process(double delta)
+    //{
+    //    Main.Instance.QuadtreeLines.RemoveAndQueueFreeChildren();
+    //    DrawChunks(quadtree, 0, Quadtree<int>.MAX_DEPTH);
+    //}
 
     private void DrawChunks<T>(Quadtree<T> chunk, int depth, int totalDepth)
     {

@@ -36,7 +36,8 @@ public partial class Main : Node2D
         //gameLoop = new MainMultimeshThreads(this, Background.Size);
         //gameLoop = new MainArch(this, Background.Size);
         //gameLoop = new MainArchSystems(this, Background.Size);
-        gameLoop = new MainGame(this, Background.Size);
+        gameLoop = new MainArchSystemsGame(this, Background.Size);
+        //gameLoop = new MainGame(this, Background.Size);
 
         //gameLoop = new MainPhysicsServer(this, Background.Size);
         gameLoop.OnReady();

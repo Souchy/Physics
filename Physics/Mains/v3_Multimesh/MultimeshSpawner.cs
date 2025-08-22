@@ -122,6 +122,7 @@ public class MultimeshSpawner
     }
     public void UpdateInstance(int i, Vector2N position, Vector2N velocity)
     {
+        CurrentInstance = i;
         //var t = new Transform2D(velocity.Angle(), position);
         float angle = MathF.Atan2(velocity.Y, velocity.X);
         Matrix3x2 t = Matrix3x2.CreateRotation(angle) * Matrix3x2.CreateTranslation(position);
@@ -236,6 +237,9 @@ public class MultimeshSpawner
     {
         //Multimesh.SetInstanceCount(Multimesh.InstanceCount);
         //Multimesh.SetVisibleInstanceCount(VisibleCount);
+
+        Multimesh.VisibleInstanceCount = (VisibleCount = CurrentInstance);
+
         if (UseBuffer) Multimesh.Buffer = buffer;
         CurrentInstance = 0;
         WriteIndex = 0;
